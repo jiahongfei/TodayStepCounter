@@ -22,7 +22,9 @@
 
 使用代码非常简单
 ```
-private static String TAG = "MainActivity";
+public class MainActivity extends AppCompatActivity {
+
+    private static String TAG = "MainActivity";
 
     //循环取当前时刻的步数中间的间隔时间
     private long TIME_INTERVAL_REFRESH = 500;
@@ -97,4 +99,5 @@ private static String TAG = "MainActivity";
         TextView stepTextView = (TextView)findViewById(R.id.stepTextView);
         stepTextView.setText(mStepSum + "步");
     }
+}
 ```
