@@ -1,3 +1,4 @@
+#Android计步模块（类似微信运动）
 >最近在项目中研究计步模块，每天0点开始记录当天的步数，类似微信运动。碰到了不少坑今天有时间整理出来给大家看看。
 做之前在google、baidu、github上搜了个遍没找到好的，大多数都是需要在后台存活，需要后台Service。
 对于现在的各大手机厂商为了提高电池的续航里程（省电），基本上AlertManager、android.intent.action.BOOT_COMPLETED、后台Service都是被干掉的。
