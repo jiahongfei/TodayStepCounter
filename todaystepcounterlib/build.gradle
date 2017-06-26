@@ -26,5 +26,6 @@ dependencies {
     compile 'com.android.support:appcompat-v7:25.3.1'
     compile files('libs/lite-orm-1.7.0.jar')
     compile 'joda-time:joda-time:2.9.9'
+    compile 'com.alibaba:fastjson:1.2.33'
 
 }
