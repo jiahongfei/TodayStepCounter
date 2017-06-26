@@ -27,14 +27,16 @@
 public class MainActivity extends AppCompatActivity {
 
     private static String TAG = "MainActivity";
+    
+    private static final int REFRESH_STEP_WHAT = 0;
 
     //循环取当前时刻的步数中间的间隔时间
     private long TIME_INTERVAL_REFRESH = 500;
 
-    private Messenger messenger = new Messenger(new Handler(new TodayStepCounterCall()));
-    private Messenger mServiceMessenger = null;
     private Handler mDelayHandler = new Handler(new TodayStepCounterCall());
     private int mStepSum;
+
+    private ISportStepInterface iSportStepInterface;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,15 +48,15 @@ public class MainActivity extends AppCompatActivity {
         bindService(intent, new ServiceConnection() {
             @Override
             public void onServiceConnected(ComponentName name, IBinder service) {
+                iSportStepInterface = ISportStepInterface.Stub.asInterface(service);
                 try {
-                    Logger.d(TAG, "send msg to fetch step count when onServiceConnected");
-                    mServiceMessenger = new Messenger(service);
-                    Message msg = Message.obtain(null, BaseConstantDef.MSG_FROM_CLIENT);
-                    msg.replyTo = messenger;
-                    mServiceMessenger.send(msg);
+                    mStepSum = iSportStepInterface.getCurrTimeSportStep();
+                    updateStepCount();
                 } catch (RemoteException e) {
                     e.printStackTrace();
                 }
+                mDelayHandler.sendEmptyMessageDelayed(REFRESH_STEP_WHAT, TIME_INTERVAL_REFRESH);
+
             }
 
             @Override
@@ -69,28 +71,24 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public boolean handleMessage(Message msg) {
             switch (msg.what) {
-                case BaseConstantDef.MSG_FROM_SERVER:
-                    // 更新界面上的步数
-                    int type = msg.getData().getInt(VitalityStepService.VITALITY_STEP_TYPE);
-                    if(VitalityStepService.VITALITY_STEP_TYPE_REFRESH_SHOW == type) {
-                        int step = msg.getData().getInt("step");
+                case REFRESH_STEP_WHAT: {
+
+                    if (null != iSportStepInterface) {
+                        int step = 0;
+                        try {
+                            step = iSportStepInterface.getCurrTimeSportStep();
+                        } catch (RemoteException e) {
+                            e.printStackTrace();
+                        }
                         if (mStepSum != step) {
                             mStepSum = step;
                             updateStepCount();
                         }
                     }
-                    mDelayHandler.sendEmptyMessageDelayed(BaseConstantDef.REQUEST_SERVER, TIME_INTERVAL_REFRESH);
-                    break;
-                case BaseConstantDef.REQUEST_SERVER:
-                    try {
-                        Message msg1 = Message.obtain(null, BaseConstantDef.MSG_FROM_CLIENT);
-                        msg1.replyTo = messenger;
-                        mServiceMessenger.send(msg1);
-                    } catch (RemoteException e) {
-                        e.printStackTrace();
-                    }
+                    mDelayHandler.sendEmptyMessageDelayed(REFRESH_STEP_WHAT, TIME_INTERVAL_REFRESH);
 
                     break;
+                }
             }
             return false;
         }
