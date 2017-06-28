@@ -22,10 +22,11 @@ android {
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
+    compile fileTree(include: ['*.jar'], dir: 'libs')
     compile 'com.android.support:appcompat-v7:25.3.1'
     compile files('libs/lite-orm-1.7.0.jar')
     compile 'joda-time:joda-time:2.9.9'
     compile 'com.alibaba:fastjson:1.2.33'
-
+    compile files('libs/android-logging-log4j-1.0.3.jar')
+    compile files('libs/log4j-1.2.17.jar')
 }

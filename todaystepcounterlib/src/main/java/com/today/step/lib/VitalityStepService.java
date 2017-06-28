@@ -13,6 +13,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Build;
 import android.os.CountDownTimer;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
@@ -85,6 +86,7 @@ public class VitalityStepService extends Service implements SensorEventListener 
     private boolean mBoot = false;
     private static int mSaveStepCount = 0;
     private static ArrayList<VitalityStepData> mVitalityStepDataList;
+    private Log4j mLog4j = null;
 
     private UploadSportStepNetwork uploadSportStepNetwork;
 
@@ -92,6 +94,11 @@ public class VitalityStepService extends Service implements SensorEventListener 
     public void onCreate() {
         Logger.e(TAG, "onCreate:" + StepDcretor.CURRENT_SETP);
         super.onCreate();
+
+        mLog4j = new Log4j(VitalityStepService.class,
+                Environment.getExternalStorageDirectory().getAbsolutePath() + "/VitalityStepServiceLibLog.txt");
+
+
         initBroadcastReceiver();
         sensorManager = (SensorManager) this
                 .getSystemService(SENSOR_SERVICE);
@@ -117,6 +124,13 @@ public class VitalityStepService extends Service implements SensorEventListener 
         if (null != intent) {
             mSeparate = intent.getBooleanExtra(INTENT_NAME_0_SEPARATE, false);
             mBoot = intent.getBooleanExtra(INTENT_NAME_BOOT, false);
+        }
+
+        if(mSeparate){
+            mLog4j.e("0点分隔广播");
+        }
+        if(mBoot){
+            mLog4j.e("开机自启动广播");
         }
 
         //初始化数据库
@@ -351,9 +365,12 @@ public class VitalityStepService extends Service implements SensorEventListener 
             float curStep = lastSensorStep - stepOffset;
             AppSharedPreferencesHelper.getInstance(getApplication()).setVitalityStepOffset(-curStep);
             Logger.e(TAG, "当天重启手机合并步数");
+            mLog4j.e("当天重启手机合并步数");
+
         } else {
             //系统重启隔天清零
             Logger.e(TAG, "隔天清零");
+            mLog4j.e("隔天清零");
             AppSharedPreferencesHelper.getInstance(getApplication()).setVitalityStepOffset(currSensorStep);
         }
         AppSharedPreferencesHelper.getInstance(getApplication()).setVitalityStepToday(getTodayDate());
@@ -367,6 +384,7 @@ public class VitalityStepService extends Service implements SensorEventListener 
             if (mBoot) {
                 mBoot = false;
                 Logger.e(TAG, "boot 重启手机进行归并步数");
+                mLog4j.e("boot 重启手机进行归并步数");
                 resetSysMergeStep(event.values[0]);
                 //测试通过
             } else {
@@ -375,6 +393,7 @@ public class VitalityStepService extends Service implements SensorEventListener 
                 if (!TextUtils.isEmpty(stepToday) &&
                         (event.values[0] < AppSharedPreferencesHelper.getInstance(getApplication()).getVitalityLastSensorStep())) {
                     Logger.e(TAG, "如果当前计步器的步数小于上次计步器的步数肯定是关机了");
+                    mLog4j.e("如果当前计步器的步数小于上次计步器的步数肯定是关机了");
 
                     resetSysMergeStep(event.values[0]);
                     //测试通过
@@ -382,6 +401,7 @@ public class VitalityStepService extends Service implements SensorEventListener 
                 } else if (!TextUtils.isEmpty(stepToday) &&
                         (AppSharedPreferencesHelper.getInstance(getApplication()).getVitalityLastSystemRunningTime() > SystemClock.elapsedRealtime())) {
                     Logger.e(TAG, "上次系统运行时间如果大于当前系统运行时间有很大几率是关机了（这个只是个猜测值来提高精度的，实际上有可能当前系统运行时间超过上次运行时间）");
+                    mLog4j.e("上次系统运行时间如果大于当前系统运行时间有很大几率是关机了（这个只是个猜测值来提高精度的，实际上有可能当前系统运行时间超过上次运行时间）");
 
                     resetSysMergeStep(event.values[0]);
                     //测试通过
@@ -395,6 +415,8 @@ public class VitalityStepService extends Service implements SensorEventListener 
                 AppSharedPreferencesHelper.getInstance(getApplication()).setVitalityStepToday(getTodayDate());
                 AppSharedPreferencesHelper.getInstance(getApplication()).setVitalityStepOffset(event.values[0]);
                 Logger.e(TAG, "mSeparate  =true");
+                mLog4j.e("mSeparate  =true");
+
                 //测试
             }
 
@@ -413,6 +435,8 @@ public class VitalityStepService extends Service implements SensorEventListener 
                         int step = (int) (event.values[0] - AppSharedPreferencesHelper.getInstance(getApplication()).getVitalityStepOffset());
                         Logger.e(TAG, "跨越0点计算前一天时间 ：" + DateUtils.dateFormat(preDay, "yyyy-MM-dd HH:mm:ss"));
                         Logger.e(TAG, "跨越0点计算前一天步数 ：" + step);
+                        mLog4j.e("跨越0点计算前一天时间 ：" + DateUtils.dateFormat(preDay, "yyyy-MM-dd HH:mm:ss"));
+                        mLog4j.e("跨越0点计算前一天步数 ：" + step);
                         saveVitalityStepData(preDay / 1000, step);
 
                         AppSharedPreferencesHelper.getInstance(getApplication()).setVitalityStepToday(getTodayDate());
@@ -436,6 +460,8 @@ public class VitalityStepService extends Service implements SensorEventListener 
             //做个容错如果步数计算小于0直接设置成0不能有负值
             if (step < 0) {
                 Logger.e(TAG, "做个容错如果步数计算小于0直接设置成0不能有负值");
+                mLog4j.e("做个容错如果步数计算小于0直接设置成0不能有负值");
+
                 step = 0;
                 AppSharedPreferencesHelper.getInstance(getApplication()).setVitalityStepToday(getTodayDate());
                 AppSharedPreferencesHelper.getInstance(getApplication()).setVitalityStepOffset(event.values[0]);
@@ -445,7 +471,8 @@ public class VitalityStepService extends Service implements SensorEventListener 
 
             Logger.e(TAG, "当前步数 : " + StepDcretor.CURRENT_SETP + "步");
             Logger.e(TAG, "传感器步数 : " + event.values[0] + "步");
-
+            mLog4j.e("当前步数 : " + StepDcretor.CURRENT_SETP + "步");
+            mLog4j.e( "传感器步数 : " + event.values[0] + "步");
 
             vitalityStepData();
 
