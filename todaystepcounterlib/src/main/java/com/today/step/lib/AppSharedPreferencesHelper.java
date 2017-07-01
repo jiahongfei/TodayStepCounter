@@ -27,56 +27,63 @@ public class AppSharedPreferencesHelper {
     private static SharedPreferences mSharedPreferences;
     private static AppSharedPreferencesHelper mInstance;
     private static Editor mEditor;
+//
+//    private AppSharedPreferencesHelper(Application application){
+//        if(null == application){
+//            return;
+//        }
+//        mSharedPreferences = application.getSharedPreferences(APP_SHARD, Context.MODE_PRIVATE);
+//    }
+//
+//    public static AppSharedPreferencesHelper getInstance(Application application) {
+//
+//        if (mInstance == null) {
+//            synchronized (AppSharedPreferencesHelper.class) {
+//                if (null == mInstance) {
+//                    mInstance = new AppSharedPreferencesHelper(application);
+//                }
+//            }
+//        }
+//        return mInstance;
+//    }
 
-    private AppSharedPreferencesHelper(Application application){
-        if(null == application){
-            return;
-        }
-        mSharedPreferences = application.getSharedPreferences(APP_SHARD, Context.MODE_PRIVATE);
+    /**
+     * Get SharedPreferences
+     */
+    private static SharedPreferences getSharedPreferences(Context context) {
+        return context.getSharedPreferences(APP_SHARD, Context.MODE_PRIVATE);
     }
 
-    public static AppSharedPreferencesHelper getInstance(Application application) {
-
-        if (mInstance == null) {
-            synchronized (AppSharedPreferencesHelper.class) {
-                if (null == mInstance) {
-                    mInstance = new AppSharedPreferencesHelper(application);
-                }
-            }
-        }
-        return mInstance;
+    public static void setVitalityLastSystemRunningTime(Context context, long lastSystemRunningTime){
+        getSharedPreferences(context).edit().putLong(VITALITY_LAST_RUNNING_TIME,lastSystemRunningTime).commit();
     }
 
-    public void setVitalityLastSystemRunningTime(long lastSystemRunningTime){
-        mSharedPreferences.edit().putLong(VITALITY_LAST_RUNNING_TIME,lastSystemRunningTime).commit();
+    public static long getVitalityLastSystemRunningTime(Context context){
+        return getSharedPreferences(context).getLong(VITALITY_LAST_RUNNING_TIME,0L);
     }
 
-    public long getVitalityLastSystemRunningTime(){
-        return mSharedPreferences.getLong(VITALITY_LAST_RUNNING_TIME,0L);
+    public static void setVitalityLastSensorStep(Context context, float lastSensorStep){
+        getSharedPreferences(context).edit().putFloat(VITALITY_LAST_SENSOR_TIME,lastSensorStep).commit();
     }
 
-    public void setVitalityLastSensorStep(float lastSensorStep){
-        mSharedPreferences.edit().putFloat(VITALITY_LAST_SENSOR_TIME,lastSensorStep).commit();
+    public static float getVitalityLastSensorStep(Context context){
+        return getSharedPreferences(context).getFloat(VITALITY_LAST_SENSOR_TIME,0.0f);
     }
 
-    public float getVitalityLastSensorStep(){
-        return mSharedPreferences.getFloat(VITALITY_LAST_SENSOR_TIME,0.0f);
+    public static void setVitalityStepOffset(Context context, float stepOffset){
+        getSharedPreferences(context).edit().putFloat(VITALITY_STEP_OFFSET,stepOffset).commit();
     }
 
-    public void setVitalityStepOffset(float stepOffset){
-        mSharedPreferences.edit().putFloat(VITALITY_STEP_OFFSET,stepOffset).commit();
+    public static float getVitalityStepOffset(Context context){
+        return getSharedPreferences(context).getFloat(VITALITY_STEP_OFFSET,0.0f);
     }
 
-    public float getVitalityStepOffset(){
-        return mSharedPreferences.getFloat(VITALITY_STEP_OFFSET,0.0f);
+    public static void setVitalityStepToday(Context context, String stepToday){
+        getSharedPreferences(context).edit().putString(VITALITY_STEP_TODAY,stepToday).commit();
     }
 
-    public void setVitalityStepToday(String stepToday){
-        mSharedPreferences.edit().putString(VITALITY_STEP_TODAY,stepToday).commit();
-    }
-
-    public String getVitalityStepToday(){
-        return mSharedPreferences.getString(VITALITY_STEP_TODAY,"");
+    public static String getVitalityStepToday(Context context){
+        return getSharedPreferences(context).getString(VITALITY_STEP_TODAY,"");
     }
 
     public Editor getEditor() {

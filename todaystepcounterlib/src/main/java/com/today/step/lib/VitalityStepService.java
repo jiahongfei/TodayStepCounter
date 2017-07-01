@@ -8,8 +8,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Build;
 import android.os.CountDownTimer;
@@ -21,13 +19,8 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.os.RemoteException;
-import android.os.SystemClock;
 import android.support.v7.app.NotificationCompat;
 import android.text.TextUtils;
-
-import com.alibaba.fastjson.JSON;
-
-import org.joda.time.DateTime;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -36,7 +29,7 @@ import java.util.Date;
 import java.util.List;
 
 @TargetApi(Build.VERSION_CODES.CUPCAKE)
-public class VitalityStepService extends Service implements SensorEventListener {
+public class VitalityStepService extends Service {
 
     private static final String TAG = "VitalityStepService";
 
@@ -62,11 +55,6 @@ public class VitalityStepService extends Service implements SensorEventListener 
      */
     private static final int STEP_COUNTER_STOP_HANDLER_DURATION = 5 * 1000;
 
-    /**
-     * 计步器10步保存一次数据库
-     */
-    private static final int SAVE_STEP_COUNT = 10;
-
     //保存数据库60秒保存一次
     private static int SAVE_STEP_DB_DURATION = 5000;
 
@@ -75,6 +63,7 @@ public class VitalityStepService extends Service implements SensorEventListener 
     private static String CURRENTDATE = "";
     private SensorManager sensorManager;
     private StepDcretor stepDetector;
+    private StepCounter stepCounter;
     private NotificationManager nm;
     private NotificationCompat.Builder builder;
     private Handler mHandler = new Handler(Looper.getMainLooper(), new VitalityStepHandler());
@@ -84,32 +73,31 @@ public class VitalityStepService extends Service implements SensorEventListener 
     private String DB_NAME = "stepcount";
     private boolean mSeparate = false;
     private boolean mBoot = false;
-    private static int mSaveStepCount = 0;
     private static ArrayList<VitalityStepData> mVitalityStepDataList;
     private Log4j mLog4j = null;
-
-    private UploadSportStepNetwork uploadSportStepNetwork;
 
     @Override
     public void onCreate() {
         Logger.e(TAG, "onCreate:" + StepDcretor.CURRENT_SETP);
         super.onCreate();
 
-        mLog4j = new Log4j(VitalityStepService.class,
-                Environment.getExternalStorageDirectory().getAbsolutePath() + "/VitalityStepServiceLibLog.txt");
+        mLog4j = new Log4j(VitalityStepService.class, Environment.getExternalStorageDirectory().getAbsolutePath() + "/VitalityStepServiceLog.txt");
 
+        //初始化数据库
+        StepDbUtils.createDb(this, DB_NAME);
 
         initBroadcastReceiver();
+
         sensorManager = (SensorManager) this
                 .getSystemService(SENSOR_SERVICE);
-        if (null == sensorManager) {
-            Logger.e(TAG, "null == sensorManager");
+
+        if (!isStepCounter() && StepDcretor.CURRENT_SETP < 1) {
+            initTodayData();
+            updateNotification(StepDcretor.CURRENT_SETP);
         }
-        new Thread(new Runnable() {
-            public void run() {
-                startStepDetector();
-            }
-        }).start();
+
+        //注册三星S键康
+        addSamSungHealthStepCounterListener();
     }
 
     @Override
@@ -121,31 +109,35 @@ public class VitalityStepService extends Service implements SensorEventListener 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Logger.e(TAG, "onStartCommand:" + StepDcretor.CURRENT_SETP);
+
         if (null != intent) {
             mSeparate = intent.getBooleanExtra(INTENT_NAME_0_SEPARATE, false);
             mBoot = intent.getBooleanExtra(INTENT_NAME_BOOT, false);
         }
 
-        if(mSeparate){
+        CURRENTDATE = getTodayDate();
+
+        //注册传感器
+        startStepDetector();
+
+
+        //开启上传服务器
+        mHandler.sendEmptyMessageDelayed(UPLOAD_STEP_HANDLER, UPLOAD_STEP_DELAYED);
+
+
+        //TODO:测试数据Start
+        if (mSeparate) {
             mLog4j.e("0点分隔广播");
         }
-        if(mBoot){
+        if (mBoot) {
             mLog4j.e("开机自启动广播");
         }
-
-        //初始化数据库
-        CURRENTDATE = getTodayDate();
-        StepDbUtils.createDb(this, DB_NAME);
-
-        if (!isStepCounter() && StepDcretor.CURRENT_SETP < 1) {
-            initTodayData();
-            updateNotification(StepDcretor.CURRENT_SETP);
-        }
-
-        uploadSportStepNetwork = new UploadSportStepNetwork(getApplication());
-        //开启上传服务器
-        mHandler.removeMessages(UPLOAD_STEP_HANDLER);
-        mHandler.sendEmptyMessageDelayed(UPLOAD_STEP_HANDLER, UPLOAD_STEP_DELAYED);
+//        if (!isStepCounter()) {
+//            ToastUtil.getInstance(getApplicationContext()).makeText("当前手机没有计步传感器");
+//        } else {
+//            ToastUtil.getInstance(getApplicationContext()).makeText("当前手机使用计步传感器");
+//        }
+        //TODO:测试数据End
 
         return START_STICKY;
     }
@@ -264,18 +256,27 @@ public class VitalityStepService extends Service implements SensorEventListener 
     @Override
     public IBinder onBind(Intent intent) {
         Logger.e(TAG, "onBind:" + StepDcretor.CURRENT_SETP);
-//        return messenger.getBinder();
         return mIBinder.asBinder();
     }
 
     private void startStepDetector() {
 
         getLock(this);
+
         //android4.4以后如果有stepcounter可以使用计步传感器
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT && isStepCounter()) {
             addStepCounterListener();
         } else {
             addBasePedoListener();
+        }
+    }
+
+    private void stopStepDetector(){
+        //android4.4以后如果有stepcounter可以使用计步传感器
+        if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT && isStepCounter()) {
+            unregisterStepCounterListener();
+        } else {
+            unregisterAccelerometerListener();
         }
     }
 
@@ -289,215 +290,119 @@ public class VitalityStepService extends Service implements SensorEventListener 
         return null == countSensor ? false : true;
     }
 
+    private void addSamSungHealthStepCounterListener(){
+//        Logger.e(TAG, "addSamSungHealthStepCounterListener");
+//        //TODO：测试三星S健康
+//        SamSungHealth.getInstance().initSamSungHealth(getApplicationContext());
+//        SamSungHealth.getInstance().connectService(new SamSungHealth.OnSamSungHealthConnectionListener() {
+//            @Override
+//            public void onConnectionFailed(HealthConnectionErrorResult error) {
+//
+//            }
+//
+//            @Override
+//            public void onChangeStepCounter(int step) {
+//                //如果连接上三星S健康，就在S健康上获取数据，不使用传感器
+//                stopStepDetector();
+//
+//                StepDcretor.CURRENT_SETP = step;
+//                updateNotification(StepDcretor.CURRENT_SETP);
+//
+//                mHandler.removeMessages(STEP_COUNTER_STOP_HANDLER);
+//                mHandler.sendEmptyMessageDelayed(STEP_COUNTER_STOP_HANDLER, STEP_COUNTER_STOP_HANDLER_DURATION);
+//            }
+//
+//            @Override
+//            public void onSaveStepCounter(int step, long millisecond) {
+//                saveVitalityStepData(millisecond / 1000, step);
+//
+//            }
+//        });
+    }
+
     private void addStepCounterListener() {
-
         Logger.e(TAG, "addStepCounterListener");
-
-        Sensor countSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
-
-        if (countSensor != null) {
-            Logger.e(TAG, "countSensor");
-            sensorManager.registerListener(this, countSensor, SensorManager.SENSOR_DELAY_UI);
+        if (null != stepCounter) {
+            stepCounter.setSeparate(mSeparate);
+            stepCounter.setBoot(mBoot);
+            Logger.e(TAG, "已经注册TYPE_STEP_COUNTER");
+            return;
         }
+        Sensor countSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
         if (null == countSensor) {
-            Logger.v(TAG, "Count sensor not available, start self_define module.");
-            addBasePedoListener();
+            return;
+        }
+        stepCounter = new StepCounter(getApplicationContext(), mSeparate,mBoot,mLog4j);
+        Logger.e(TAG, "countSensor");
+        sensorManager.registerListener(stepCounter, countSensor, SensorManager.SENSOR_DELAY_UI);
+        stepCounter.setOnStepCounterListener(new OnStepCounterListener() {
+            @Override
+            public void onChangeStepCounter(int step) {
+
+                StepDcretor.CURRENT_SETP = step;
+                updateNotification(StepDcretor.CURRENT_SETP);
+
+                mHandler.removeMessages(STEP_COUNTER_STOP_HANDLER);
+                mHandler.sendEmptyMessageDelayed(STEP_COUNTER_STOP_HANDLER, STEP_COUNTER_STOP_HANDLER_DURATION);
+            }
+
+            @Override
+            public void onSaveStepCounter(int step, long millisecond) {
+                saveVitalityStepData(millisecond / 1000, step);
+            }
+        });
+    }
+
+    private void unregisterStepCounterListener(){
+        if(null != sensorManager && null != stepCounter){
+            sensorManager.unregisterListener(stepCounter);
+            stepCounter = null;
         }
     }
 
     private void addBasePedoListener() {
-
         Logger.e(TAG, "addBasePedoListener");
-
+        if (null != stepDetector) {
+            Logger.e(TAG, "已经注册TYPE_ACCELEROMETER");
+            return;
+        }
         //开启定时器用来保存当天步数
         mHandler.sendEmptyMessage(SAVE_TODAY_STEP);
         //没有计步器的时候开启定时器保存数据
+        Sensor sensor = sensorManager
+                .getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        if (null == sensor) {
+            return;
+        }
         stepDetector = new StepDcretor(this);
         // 获得传感器的类型，这里获得的类型是加速度传感器
         // 此方法用来注册，只有注册过才会生效，参数：SensorEventListener的实例，Sensor的实例，更新速率
-        Sensor sensor = sensorManager
-                .getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         sensorManager.registerListener(stepDetector, sensor,
                 SensorManager.SENSOR_DELAY_UI);
         stepDetector
-                .setOnSensorChangeListener(new StepDcretor.OnSensorChangeListener() {
-
+                .setOnStepCounterListener(new OnStepCounterListener() {
                     @Override
-                    public void onChange() {
-                        updateNotification(StepDcretor.CURRENT_SETP);
+                    public void onChangeStepCounter(int step) {
 
-                        vitalityStepData();
+                        updateNotification(StepDcretor.CURRENT_SETP);
 
                         mHandler.removeMessages(STEP_COUNTER_STOP_HANDLER);
                         mHandler.sendEmptyMessageDelayed(STEP_COUNTER_STOP_HANDLER, STEP_COUNTER_STOP_HANDLER_DURATION);
+                    }
+
+                    @Override
+                    public void onSaveStepCounter(int step, long millisecond) {
+                        saveVitalityStepData(millisecond / 1000, step);
 
                     }
                 });
     }
 
-    /**
-     * 当前时间大于stepToday返回1，小于-1，等于0
-     *
-     * @param stepToday
-     * @return
-     */
-    private int compareCurrAndToday(String stepToday) {
-        DateTime todayTime = new DateTime(DateUtils.getDateMillis(stepToday, "yyyy-MM-dd"));
-        DateTime currTime = new DateTime(DateUtils.getDateMillis(DateUtils.dateFormat(System.currentTimeMillis(), "yyyy-MM-dd"), "yyyy-MM-dd"));
-        Logger.e(TAG, "todayTime ：" + todayTime.toString("yyyy-MM-dd HH:mm:ss"));
-        Logger.e(TAG, "currTime ：" + currTime.toString("yyyy-MM-dd HH:mm:ss"));
-
-        if (currTime.isAfter(todayTime)) {
-            return 1;
-        } else if (currTime.isBefore(todayTime)) {
-            return -1;
-        } else {
-            return 0;
+    private void unregisterAccelerometerListener(){
+        if(null != sensorManager && null != stepDetector){
+            sensorManager.unregisterListener(stepDetector);
+            stepDetector = null;
         }
-    }
-
-    private void resetSysMergeStep(float currSensorStep) {
-        String stepToday = AppSharedPreferencesHelper.getInstance(getApplication()).getVitalityStepToday();
-        float lastSensorStep = AppSharedPreferencesHelper.getInstance(getApplication()).getVitalityLastSensorStep();
-        float stepOffset = AppSharedPreferencesHelper.getInstance(getApplication()).getVitalityStepOffset();
-        if (0 == compareCurrAndToday(stepToday)) {
-            //当天
-            float curStep = lastSensorStep - stepOffset;
-            AppSharedPreferencesHelper.getInstance(getApplication()).setVitalityStepOffset(-curStep);
-            Logger.e(TAG, "当天重启手机合并步数");
-            mLog4j.e("当天重启手机合并步数");
-
-        } else {
-            //系统重启隔天清零
-            Logger.e(TAG, "隔天清零");
-            mLog4j.e("隔天清零");
-            AppSharedPreferencesHelper.getInstance(getApplication()).setVitalityStepOffset(currSensorStep);
-        }
-        AppSharedPreferencesHelper.getInstance(getApplication()).setVitalityStepToday(getTodayDate());
-    }
-
-    @Override
-    public void onSensorChanged(SensorEvent event) {
-
-        if (event.sensor.getType() == Sensor.TYPE_STEP_COUNTER) {
-
-            if (mBoot) {
-                mBoot = false;
-                Logger.e(TAG, "boot 重启手机进行归并步数");
-                mLog4j.e("boot 重启手机进行归并步数");
-                resetSysMergeStep(event.values[0]);
-                //测试通过
-            } else {
-                String stepToday = AppSharedPreferencesHelper.getInstance(getApplication()).getVitalityStepToday();
-
-                if (!TextUtils.isEmpty(stepToday) &&
-                        (event.values[0] < AppSharedPreferencesHelper.getInstance(getApplication()).getVitalityLastSensorStep())) {
-                    Logger.e(TAG, "如果当前计步器的步数小于上次计步器的步数肯定是关机了");
-                    mLog4j.e("如果当前计步器的步数小于上次计步器的步数肯定是关机了");
-
-                    resetSysMergeStep(event.values[0]);
-                    //测试通过
-
-                } else if (!TextUtils.isEmpty(stepToday) &&
-                        (AppSharedPreferencesHelper.getInstance(getApplication()).getVitalityLastSystemRunningTime() > SystemClock.elapsedRealtime())) {
-                    Logger.e(TAG, "上次系统运行时间如果大于当前系统运行时间有很大几率是关机了（这个只是个猜测值来提高精度的，实际上有可能当前系统运行时间超过上次运行时间）");
-                    mLog4j.e("上次系统运行时间如果大于当前系统运行时间有很大几率是关机了（这个只是个猜测值来提高精度的，实际上有可能当前系统运行时间超过上次运行时间）");
-
-                    resetSysMergeStep(event.values[0]);
-                    //测试通过
-
-                }
-            }
-
-            if (mSeparate) {
-                //分隔时间，当app不在后台进程alertmanager启动app会进入
-                mSeparate = false;
-                AppSharedPreferencesHelper.getInstance(getApplication()).setVitalityStepToday(getTodayDate());
-                AppSharedPreferencesHelper.getInstance(getApplication()).setVitalityStepOffset(event.values[0]);
-                Logger.e(TAG, "mSeparate  =true");
-                mLog4j.e("mSeparate  =true");
-
-                //测试
-            }
-
-            String stepToday = AppSharedPreferencesHelper.getInstance(getApplication()).getVitalityStepToday();
-            if (TextUtils.isEmpty(stepToday)) {
-                //第一次用手机app的时候记录一个offset
-                AppSharedPreferencesHelper.getInstance(getApplication()).setVitalityStepToday(getTodayDate());
-                AppSharedPreferencesHelper.getInstance(getApplication()).setVitalityStepOffset(event.values[0]);
-                //测试
-            } else {
-                try {
-                    if (1 == compareCurrAndToday(stepToday)) {
-                        //当前时间大于上次记录时间，跨越0点，0点到开启App这段时间的数据会算为前一天的数据。如果跨越多天，都会算前一天的
-
-                        long preDay = DateUtils.getDateMillis(DateUtils.dateFormat(new DateTime(System.currentTimeMillis()).plusDays(-1).getMillis(), "yyyy-MM-dd") + " 23:59:59", "yyyy-MM-dd HH:mm:ss");
-                        int step = (int) (event.values[0] - AppSharedPreferencesHelper.getInstance(getApplication()).getVitalityStepOffset());
-                        Logger.e(TAG, "跨越0点计算前一天时间 ：" + DateUtils.dateFormat(preDay, "yyyy-MM-dd HH:mm:ss"));
-                        Logger.e(TAG, "跨越0点计算前一天步数 ：" + step);
-                        mLog4j.e("跨越0点计算前一天时间 ：" + DateUtils.dateFormat(preDay, "yyyy-MM-dd HH:mm:ss"));
-                        mLog4j.e("跨越0点计算前一天步数 ：" + step);
-                        saveVitalityStepData(preDay / 1000, step);
-
-                        AppSharedPreferencesHelper.getInstance(getApplication()).setVitalityStepToday(getTodayDate());
-                        AppSharedPreferencesHelper.getInstance(getApplication()).setVitalityStepOffset(event.values[0]);
-                        //测试
-                    }
-                } catch (Exception e) {
-                    Logger.e(TAG, "Exception e");
-                }
-
-            }
-
-            float offset = AppSharedPreferencesHelper.getInstance(getApplication()).getVitalityStepOffset();
-            Logger.e(TAG, "offset : " + offset + "步");
-
-            float step = event.values[0];
-            if (event.values[0] >= offset) {
-                //在不关机的情况下一直减去这个offset得出下载软件到当前时间的步数
-                step = event.values[0] - offset;
-            }
-            //做个容错如果步数计算小于0直接设置成0不能有负值
-            if (step < 0) {
-                Logger.e(TAG, "做个容错如果步数计算小于0直接设置成0不能有负值");
-                mLog4j.e("做个容错如果步数计算小于0直接设置成0不能有负值");
-
-                step = 0;
-                AppSharedPreferencesHelper.getInstance(getApplication()).setVitalityStepToday(getTodayDate());
-                AppSharedPreferencesHelper.getInstance(getApplication()).setVitalityStepOffset(event.values[0]);
-            }
-            StepDcretor.CURRENT_SETP = (int) step;
-            updateNotification(StepDcretor.CURRENT_SETP);
-
-            Logger.e(TAG, "当前步数 : " + StepDcretor.CURRENT_SETP + "步");
-            Logger.e(TAG, "传感器步数 : " + event.values[0] + "步");
-            mLog4j.e("当前步数 : " + StepDcretor.CURRENT_SETP + "步");
-            mLog4j.e( "传感器步数 : " + event.values[0] + "步");
-
-            vitalityStepData();
-
-            AppSharedPreferencesHelper.getInstance(getApplication()).setVitalityLastSensorStep(event.values[0]);
-            AppSharedPreferencesHelper.getInstance(getApplication()).setVitalityLastSystemRunningTime(SystemClock.elapsedRealtime());
-            AppSharedPreferencesHelper.getInstance(getApplication()).setVitalityStepToday(getTodayDate());
-
-            mHandler.removeMessages(STEP_COUNTER_STOP_HANDLER);
-            mHandler.sendEmptyMessageDelayed(STEP_COUNTER_STOP_HANDLER, STEP_COUNTER_STOP_HANDLER_DURATION);
-
-        }
-    }
-
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {
-    }
-
-    private void vitalityStepData() {
-        if (mSaveStepCount >= SAVE_STEP_COUNT) {
-            mSaveStepCount = 0;
-            //走10步保存一次数据库
-            Logger.e(TAG, "保存数据库 : " + StepDcretor.CURRENT_SETP + "步");
-            saveVitalityStepData(System.currentTimeMillis() / 1000, StepDcretor.CURRENT_SETP);
-        }
-        mSaveStepCount++;
     }
 
     class VitalityStepHandler implements Handler.Callback {
@@ -511,6 +416,7 @@ public class VitalityStepService extends Service implements SensorEventListener 
                     mHandler.sendEmptyMessageDelayed(UPLOAD_STEP_HANDLER, UPLOAD_STEP_DELAYED);
 
                     Logger.e(TAG, "上传数据服务器");
+                    mLog4j.e("上传数据服务器");
 
                     mVitalityStepDataList = (ArrayList) StepDbUtils.getQueryAll(VitalityStepData.class);
                     if (null == mVitalityStepDataList || 0 == mVitalityStepDataList.size()) {
@@ -520,25 +426,35 @@ public class VitalityStepService extends Service implements SensorEventListener 
                     if (TextUtils.isEmpty(uploadStep)) {
                         return false;
                     }
-                    Logger.e(TAG, "删除数据库 ： " + mVitalityStepDataList.toString());
-                    StepDbUtils.delete(mVitalityStepDataList);
+//                    String currentUid = getCurrentUid();
+//                    String currentUserToken = getCurrentUserToken();
+//
+//                    if (TextUtils.isEmpty(currentUid) || TextUtils.isEmpty(currentUserToken)) {
+//                        return false;
+//                    }
 
-//                    Logger.e(TAG, "开始上传");
-//                    uploadSportStepNetwork.postSportStepNum(uploadStep, new UploadSportStepResponse() {
-//                        @Override
-//                        public void onSuccess(String response) {
-//                            //上传步数成功删除对应的数据库
-//                            if (null != mVitalityStepDataList && mVitalityStepDataList.size() > 0) {
-//                                Logger.e(TAG, "删除数据库 ： " + mVitalityStepDataList.toString());
-//                                StepDbUtils.delete(mVitalityStepDataList);
-//                            }
-//                        }
+                    Logger.e(TAG, "开始上传");
+                    mLog4j.e("开始上传");
+
+//                    serviceDetailInteractor.postSportStepNum(currentUid, currentUserToken, uploadStep,
+//                            new BaseEntityResponse<HealthBasic>(HealthBasic.class) {
+//                                @Override
+//                                public void onSuccess(HealthBasic healthBasic) throws Exception {
 //
-//                        @Override
-//                        public void onFails(String error) {
+//                                    //上传步数成功删除对应的数据库
+//                                    if (null != mVitalityStepDataList && mVitalityStepDataList.size() > 0) {
+//                                        Logger.e(TAG, "删除数据库 ： " + mVitalityStepDataList.toString());
+//                                        mLog4j.e("删除数据库 ： " + mVitalityStepDataList.toString());
+//                                        StepDbUtils.delete(mVitalityStepDataList);
+//                                    }
+//                                }
 //
-//                        }
-//                    });
+//                                @Override
+//                                public boolean onFailure(int type, String arg1) {
+//
+//                                    return false;
+//                                }
+//                            });
 
                     break;
                 }
@@ -561,8 +477,23 @@ public class VitalityStepService extends Service implements SensorEventListener 
     }
 
     private String getUploadStep(ArrayList<VitalityStepData> vitalityStepDataList) {
-        String jsonString = JSON.toJSONString(vitalityStepDataList);
-        return jsonString;
+//        if (!PAHApplication.getInstance().isLogin()) {
+//            return "";
+//        }
+//        if (null != vitalityStepDataList && vitalityStepDataList.size() > 0) {
+//            List<SportRecord> sportRecordList = new ArrayList<>();
+//            for (VitalityStepData vitalityStepData : vitalityStepDataList) {
+//                SportRecord sportRecord = new SportRecord();
+//                sportRecord.setSportDate(vitalityStepData.getDate() + "");
+//                sportRecord.setStepNum(String.valueOf(vitalityStepData.getStep()));
+//                sportRecord.setKm(Utils.getDistanceByStep((int) vitalityStepData.getStep()));
+//                sportRecord.setKaluli(Utils.getCalorieByStep((int) vitalityStepData.getStep()));
+//                sportRecordList.add(sportRecord);
+//            }
+//            Logger.e(TAG, "size : " + sportRecordList.size() + "  " + sportRecordList.toString());
+//            return JSON.toJSONString(sportRecordList);
+//        }
+        return "";
     }
 
     class TimeCount extends CountDownTimer {
@@ -588,7 +519,7 @@ public class VitalityStepService extends Service implements SensorEventListener 
         vitalityStepData.setDate(date);
         vitalityStepData.setStep(step);
         StepDbUtils.insert(vitalityStepData);
-        Logger.e(TAG, "saveVitalityStepData");
+        Logger.e(TAG, "保存数据库 ： " + step);
     }
 
     private void save() {
@@ -617,13 +548,13 @@ public class VitalityStepService extends Service implements SensorEventListener 
         if (null != mBatInfoReceiver) {
             unregisterReceiver(mBatInfoReceiver);
         }
-        if (sensorManager != null) {
-            sensorManager.unregisterListener(stepDetector);
-            sensorManager = null;
-        }
-        if (stepDetector != null) {
-            stepDetector = null;
-        }
+//        if (sensorManager != null && null != stepDetector) {
+//            sensorManager.unregisterListener(stepDetector);
+//            sensorManager = null;
+//        }
+//        if (stepDetector != null) {
+//            stepDetector = null;
+//        }
         Intent intent = new Intent(this, VitalityStepService.class);
         startService(intent);
         super.onDestroy();
@@ -660,12 +591,10 @@ public class VitalityStepService extends Service implements SensorEventListener 
         return (mWakeLock);
     }
 
-
     private final ISportStepInterface.Stub mIBinder = new ISportStepInterface.Stub() {
         @Override
         public int getCurrTimeSportStep() throws RemoteException {
             return StepDcretor.CURRENT_SETP;
         }
     };
-
 }

@@ -12,6 +12,11 @@ import java.util.TimerTask;
 
 public class StepDcretor implements SensorEventListener {
     private final String TAG = "StepDcretor";
+    /**
+     * 计步器10步保存一次数据库
+     */
+    private static final int SAVE_STEP_COUNT = 10;
+
     //存放三轴数据
     final int valueNum = 5;
     //用于存放计算阈值的波峰波谷差值
@@ -61,11 +66,8 @@ public class StepDcretor implements SensorEventListener {
     // 倒计时3.5秒，3.5秒内不会显示计步，用于屏蔽细微波动
     private long duration = 1500;
     private TimeCount time;
-    OnSensorChangeListener onSensorChangeListener;
-
-    public interface OnSensorChangeListener {
-        void onChange();
-    }
+    private OnStepCounterListener mOnStepCounterListener;
+    private static int mSaveStepCount = 0;
 
     public StepDcretor(Context context) {
         super();
@@ -74,13 +76,8 @@ public class StepDcretor implements SensorEventListener {
     public void onAccuracyChanged(Sensor arg0, int arg1) {
     }
 
-    public OnSensorChangeListener getOnSensorChangeListener() {
-        return onSensorChangeListener;
-    }
-
-    public void setOnSensorChangeListener(
-            OnSensorChangeListener onSensorChangeListener) {
-        this.onSensorChangeListener = onSensorChangeListener;
+    public void setOnStepCounterListener(OnStepCounterListener onStepCounterListener) {
+        mOnStepCounterListener = onStepCounterListener;
     }
 
     public void onSensorChanged(SensorEvent event) {
@@ -140,10 +137,23 @@ public class StepDcretor implements SensorEventListener {
             Log.v(TAG, "计步中 TEMP_STEP:" + TEMP_STEP);
         } else if (CountTimeState == 2) {
             CURRENT_SETP++;
-            if (onSensorChangeListener != null) {
-                onSensorChangeListener.onChange();
+            if (mOnStepCounterListener != null) {
+                mOnStepCounterListener.onChangeStepCounter(CURRENT_SETP);
+            }
+            saveStepData(CURRENT_SETP);
+        }
+    }
+
+    private void saveStepData(int step) {
+        if (mSaveStepCount >= SAVE_STEP_COUNT) {
+            mSaveStepCount = 0;
+            //走10步保存一次数据库
+            Logger.e(TAG, "保存数据库 : " + step + "步");
+            if(null != mOnStepCounterListener){
+                mOnStepCounterListener.onSaveStepCounter(step, System.currentTimeMillis());
             }
         }
+        mSaveStepCount++;
     }
 
     /*
