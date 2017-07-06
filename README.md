@@ -25,7 +25,7 @@
 
 计步模块第一篇简书地址：http://www.jianshu.com/p/ca1e1c3ac086
 
-计步模块第二篇简书地址：http://www.jianshu.com/p/ca1e1c3ac086
+计步模块第二篇简书地址：http://www.jianshu.com/p/c4bb1c45aeec
 
 使用代码非常简单
 ```
