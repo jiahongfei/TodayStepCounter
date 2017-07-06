@@ -23,6 +23,12 @@ public class AppSharedPreferencesHelper {
     public static final String VITALITY_STEP_OFFSET = "vitality_step_first";
     //vitality 当前天数
     public static final String VITALITY_STEP_TODAY = "vitality_step_today";
+    //SamSung Health三星S健康获取步数是否成功
+    public static final String SAMSUNG_HEALTH_STEP_COUNTER = "samsung_health_step_counter";
+    //SamSung Health三星S健康最后获取步数的时间
+    public static final String SAMSUNG_HEALTH_LAST_TIME = "samsung_health_last_time";
+    //SamSung Health三星S健康获取步数时间
+    public static final String SAMSUNG_HEALTH_STEP_TIME = "samsung_health_step_time";
 
     private static SharedPreferences mSharedPreferences;
     private static AppSharedPreferencesHelper mInstance;
@@ -84,6 +90,30 @@ public class AppSharedPreferencesHelper {
 
     public static String getVitalityStepToday(Context context){
         return getSharedPreferences(context).getString(VITALITY_STEP_TODAY,"");
+    }
+
+    public static void setSamsungHealthStepCounter(Context context, boolean shealth){
+        getSharedPreferences(context).edit().putBoolean(SAMSUNG_HEALTH_STEP_COUNTER,shealth).commit();
+    }
+
+    public static boolean getSamsungHealthStepCounter(Context context){
+        return getSharedPreferences(context).getBoolean(SAMSUNG_HEALTH_STEP_COUNTER,false);
+    }
+
+    public static void setSamsungHealthLastTime(Context context, long lastTime){
+        getSharedPreferences(context).edit().putLong(SAMSUNG_HEALTH_LAST_TIME,lastTime).commit();
+    }
+
+    public static long getSamsungHealthLastTime(Context context){
+        return getSharedPreferences(context).getLong(SAMSUNG_HEALTH_LAST_TIME,0L);
+    }
+
+    public static void setSamsungHealthStepTime(Context context, long lastTime){
+        getSharedPreferences(context).edit().putLong(SAMSUNG_HEALTH_STEP_TIME,lastTime).commit();
+    }
+
+    public static long getSamsungHealthStepTime(Context context){
+        return getSharedPreferences(context).getLong(SAMSUNG_HEALTH_STEP_TIME,0L);
     }
 
     public Editor getEditor() {

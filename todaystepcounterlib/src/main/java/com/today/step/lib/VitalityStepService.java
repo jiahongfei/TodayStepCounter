@@ -21,6 +21,7 @@ import android.os.PowerManager.WakeLock;
 import android.os.RemoteException;
 import android.support.v7.app.NotificationCompat;
 import android.text.TextUtils;
+import android.widget.Toast;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -81,8 +82,6 @@ public class VitalityStepService extends Service {
         Logger.e(TAG, "onCreate:" + StepDcretor.CURRENT_SETP);
         super.onCreate();
 
-        mLog4j = new Log4j(VitalityStepService.class, Environment.getExternalStorageDirectory().getAbsolutePath() + "/VitalityStepServiceLog.txt");
-
         //初始化数据库
         StepDbUtils.createDb(this, DB_NAME);
 
@@ -110,6 +109,9 @@ public class VitalityStepService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         Logger.e(TAG, "onStartCommand:" + StepDcretor.CURRENT_SETP);
 
+        mLog4j = new Log4j(VitalityStepService.class, Environment.getExternalStorageDirectory().getAbsolutePath() + "/VitalityStepServiceLog.txt",false);
+
+
         if (null != intent) {
             mSeparate = intent.getBooleanExtra(INTENT_NAME_0_SEPARATE, false);
             mBoot = intent.getBooleanExtra(INTENT_NAME_BOOT, false);
@@ -132,11 +134,14 @@ public class VitalityStepService extends Service {
         if (mBoot) {
             mLog4j.e("开机自启动广播");
         }
-//        if (!isStepCounter()) {
+        if (!isStepCounter()) {
 //            ToastUtil.getInstance(getApplicationContext()).makeText("当前手机没有计步传感器");
-//        } else {
+            Toast.makeText(getApplicationContext(),"Lib 当前手机没有计步传感器",Toast.LENGTH_LONG).show();
+        } else {
 //            ToastUtil.getInstance(getApplicationContext()).makeText("当前手机使用计步传感器");
-//        }
+            Toast.makeText(getApplicationContext(),"Lib 当前手机使用计步传感器",Toast.LENGTH_LONG).show();
+
+        }
         //TODO:测试数据End
 
         return START_STICKY;

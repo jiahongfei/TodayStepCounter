@@ -13,13 +13,16 @@ public class Log4j {
     private static Logger logger = null;
     private static boolean sIsDebug = false;
 
-    public Log4j(Class clazz, String logFileName){
-        LogConfigurator logConfigurator = new LogConfigurator();
-        logConfigurator.setFileName(logFileName);
-        logConfigurator.setMaxFileSize(1024 * 1024 * 500);
-        logConfigurator.setImmediateFlush(true);
-        logConfigurator.configure();
-        logger = Logger.getLogger(clazz);
+    public Log4j(Class clazz, String logFileName, boolean isDebug){
+        sIsDebug = isDebug;
+        if(sIsDebug) {
+            LogConfigurator logConfigurator = new LogConfigurator();
+            logConfigurator.setFileName(logFileName);
+            logConfigurator.setMaxFileSize(1024 * 1024 * 500);
+            logConfigurator.setImmediateFlush(true);
+            logConfigurator.configure();
+            logger = Logger.getLogger(clazz);
+        }
     }
 
     public void d(String message) {

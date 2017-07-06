@@ -26,6 +26,13 @@
         android:label="@string/app_name"
         android:supportsRtl="true">
 
+        <!--接入三星SHealth start-->
+        <meta-data
+            android:name="com.samsung.android.health.permission.read"
+            android:value="com.samsung.health.step_count;com.samsung.shealth.step_daily_trend" />
+
+        <!--接入三星SHealth end-->
+
         <receiver
             android:name=".BootCompleteReceiver"
             android:enabled="true"
@@ -35,10 +42,10 @@
             </intent-filter>
         </receiver>
 
-        <receiver android:name=".StepAlertReceive"
+        <receiver
+            android:name=".StepAlertReceive"
             android:enabled="true"
-            android:exported="false">
-        </receiver>
+            android:exported="false"></receiver>
 
         <service
             android:name=".VitalityStepService"
