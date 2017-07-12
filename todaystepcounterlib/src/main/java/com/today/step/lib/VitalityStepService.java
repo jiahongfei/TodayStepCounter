@@ -82,6 +82,8 @@ public class VitalityStepService extends Service {
         Logger.e(TAG, "onCreate:" + StepDcretor.CURRENT_SETP);
         super.onCreate();
 
+        CURRENTDATE = getTodayDate();
+
         //初始化数据库
         StepDbUtils.createDb(this, DB_NAME);
 
@@ -116,8 +118,6 @@ public class VitalityStepService extends Service {
             mSeparate = intent.getBooleanExtra(INTENT_NAME_0_SEPARATE, false);
             mBoot = intent.getBooleanExtra(INTENT_NAME_BOOT, false);
         }
-
-        CURRENTDATE = getTodayDate();
 
         //注册传感器
         startStepDetector();
