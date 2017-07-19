@@ -23,6 +23,8 @@ import android.support.v7.app.NotificationCompat;
 import android.text.TextUtils;
 import android.widget.Toast;
 
+import org.joda.time.DateTime;
+
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -82,8 +84,6 @@ public class VitalityStepService extends Service {
         Logger.e(TAG, "onCreate:" + StepDcretor.CURRENT_SETP);
         super.onCreate();
 
-        CURRENTDATE = getTodayDate();
-
         //初始化数据库
         StepDbUtils.createDb(this, DB_NAME);
 
@@ -92,13 +92,17 @@ public class VitalityStepService extends Service {
         sensorManager = (SensorManager) this
                 .getSystemService(SENSOR_SERVICE);
 
+
+        initAccelerometerStep();
+    }
+
+    private void initAccelerometerStep() {
+        CURRENTDATE = getTodayDate();
+        StepDcretor.CURRENT_SETP = 0;
         if (!isStepCounter() && StepDcretor.CURRENT_SETP < 1) {
             initTodayData();
             updateNotification(StepDcretor.CURRENT_SETP);
         }
-
-        //注册三星S键康
-        addSamSungHealthStepCounterListener();
     }
 
     @Override
@@ -111,7 +115,7 @@ public class VitalityStepService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         Logger.e(TAG, "onStartCommand:" + StepDcretor.CURRENT_SETP);
 
-        mLog4j = new Log4j(VitalityStepService.class, Environment.getExternalStorageDirectory().getAbsolutePath() + "/VitalityStepServiceLog.txt",false);
+        mLog4j = new Log4j(VitalityStepService.class, Environment.getExternalStorageDirectory().getAbsolutePath() + "/VitalityStepServiceLog.txt", false);
 
 
         if (null != intent) {
@@ -136,10 +140,10 @@ public class VitalityStepService extends Service {
         }
         if (!isStepCounter()) {
 //            ToastUtil.getInstance(getApplicationContext()).makeText("当前手机没有计步传感器");
-            Toast.makeText(getApplicationContext(),"Lib 当前手机没有计步传感器",Toast.LENGTH_LONG).show();
+            Toast.makeText(getApplicationContext(), "Lib 当前手机没有计步传感器", Toast.LENGTH_LONG).show();
         } else {
 //            ToastUtil.getInstance(getApplicationContext()).makeText("当前手机使用计步传感器");
-            Toast.makeText(getApplicationContext(),"Lib 当前手机使用计步传感器",Toast.LENGTH_LONG).show();
+            Toast.makeText(getApplicationContext(), "Lib 当前手机使用计步传感器", Toast.LENGTH_LONG).show();
 
         }
         //TODO:测试数据End
@@ -182,6 +186,8 @@ public class VitalityStepService extends Service {
         // example：有时候会用到系统对话框，权限可能很高，会覆盖在锁屏界面或者“关机”对话框之上，
         // 所以监听这个广播，当收到时就隐藏自己的对话，如点击pad右下角部分弹出的对话框
         filter.addAction(Intent.ACTION_CLOSE_SYSTEM_DIALOGS);
+        //一分钟回调一次
+        filter.addAction(Intent.ACTION_TIME_TICK);
 
         mBatInfoReceiver = new BroadcastReceiver() {
             @Override
@@ -214,18 +220,38 @@ public class VitalityStepService extends Service {
 //                    save();
                     saveVitalityStepData(System.currentTimeMillis() / 1000, StepDcretor.CURRENT_SETP);
 
-                } else if (Intent.ACTION_DATE_CHANGED.equals(intent.getAction())) {
-                    Logger.v(TAG, " receive ACTION_TIME_CHANGED");
-                    initTodayData();
-                    clearStepData();
+                } else if (Intent.ACTION_TIME_TICK.equals(intent.getAction())) {
+                    Logger.e(TAG, "ACTION_TIME_TICK");
+                    //如果day变了，计步器从0开始
+                    if (1 == compareCurrAndToday(CURRENTDATE)) {
+                        //跨天了
+                        initAccelerometerStep();
+                    }
                 }
             }
         };
         registerReceiver(mBatInfoReceiver, filter, "permission.ALLOW_BROADCAST", null);
     }
 
-    private void clearStepData() {
-        CURRENTDATE = "0";
+    /**
+     * 当前时间大于stepToday返回1，小于-1，等于0
+     *
+     * @param stepToday yyyy-MM-dd
+     * @return
+     */
+    private int compareCurrAndToday(String stepToday) {
+        DateTime todayTime = new DateTime(DateUtils.getDateMillis(stepToday, "yyyy-MM-dd"));
+        DateTime currTime = new DateTime(DateUtils.getDateMillis(DateUtils.dateFormat(System.currentTimeMillis(), "yyyy-MM-dd"), "yyyy-MM-dd"));
+        Logger.e(TAG, "todayTime ：" + todayTime.toString("yyyy-MM-dd HH:mm:ss"));
+        Logger.e(TAG, "currTime ：" + currTime.toString("yyyy-MM-dd HH:mm:ss"));
+
+        if (currTime.isAfter(todayTime)) {
+            return 1;
+        } else if (currTime.isBefore(todayTime)) {
+            return -1;
+        } else {
+            return 0;
+        }
     }
 
     private void startTimeCount() {
@@ -276,7 +302,7 @@ public class VitalityStepService extends Service {
         }
     }
 
-    private void stopStepDetector(){
+    private void stopStepDetector() {
         //android4.4以后如果有stepcounter可以使用计步传感器
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT && isStepCounter()) {
             unregisterStepCounterListener();
@@ -295,7 +321,7 @@ public class VitalityStepService extends Service {
         return null == countSensor ? false : true;
     }
 
-    private void addSamSungHealthStepCounterListener(){
+    private void addSamSungHealthStepCounterListener() {
 //        Logger.e(TAG, "addSamSungHealthStepCounterListener");
 //        //TODO：测试三星S健康
 //        SamSungHealth.getInstance().initSamSungHealth(getApplicationContext());
@@ -337,7 +363,7 @@ public class VitalityStepService extends Service {
         if (null == countSensor) {
             return;
         }
-        stepCounter = new StepCounter(getApplicationContext(), mSeparate,mBoot,mLog4j);
+        stepCounter = new StepCounter(getApplicationContext(), mSeparate, mBoot, mLog4j);
         Logger.e(TAG, "countSensor");
         sensorManager.registerListener(stepCounter, countSensor, SensorManager.SENSOR_DELAY_UI);
         stepCounter.setOnStepCounterListener(new OnStepCounterListener() {
@@ -358,8 +384,8 @@ public class VitalityStepService extends Service {
         });
     }
 
-    private void unregisterStepCounterListener(){
-        if(null != sensorManager && null != stepCounter){
+    private void unregisterStepCounterListener() {
+        if (null != sensorManager && null != stepCounter) {
             sensorManager.unregisterListener(stepCounter);
             stepCounter = null;
         }
@@ -403,8 +429,8 @@ public class VitalityStepService extends Service {
                 });
     }
 
-    private void unregisterAccelerometerListener(){
-        if(null != sensorManager && null != stepDetector){
+    private void unregisterAccelerometerListener() {
+        if (null != sensorManager && null != stepDetector) {
             sensorManager.unregisterListener(stepDetector);
             stepDetector = null;
         }
