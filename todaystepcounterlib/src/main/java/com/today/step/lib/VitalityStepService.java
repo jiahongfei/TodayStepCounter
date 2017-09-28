@@ -1,12 +1,15 @@
 package com.today.step.lib;
 
 import android.annotation.TargetApi;
+import android.app.Notification;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.BitmapFactory;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.os.Build;
@@ -21,6 +24,7 @@ import android.os.PowerManager.WakeLock;
 import android.os.RemoteException;
 import android.support.v7.app.NotificationCompat;
 import android.text.TextUtils;
+import android.util.Log;
 import android.widget.Toast;
 
 import org.joda.time.DateTime;
@@ -172,55 +176,12 @@ public class VitalityStepService extends Service {
 
     private void initBroadcastReceiver() {
         final IntentFilter filter = new IntentFilter();
-        // 屏幕灭屏广播
-        filter.addAction(Intent.ACTION_SCREEN_OFF);
-        //日期修改
-        filter.addAction(Intent.ACTION_TIME_CHANGED);
-        //关机广播
-        filter.addAction(Intent.ACTION_SHUTDOWN);
-        // 屏幕亮屏广播
-        filter.addAction(Intent.ACTION_SCREEN_ON);
-        // 屏幕解锁广播
-        filter.addAction(Intent.ACTION_USER_PRESENT);
-        // 当长按电源键弹出“关机”对话或者锁屏时系统会发出这个广播
-        // example：有时候会用到系统对话框，权限可能很高，会覆盖在锁屏界面或者“关机”对话框之上，
-        // 所以监听这个广播，当收到时就隐藏自己的对话，如点击pad右下角部分弹出的对话框
-        filter.addAction(Intent.ACTION_CLOSE_SYSTEM_DIALOGS);
-        //一分钟回调一次
         filter.addAction(Intent.ACTION_TIME_TICK);
 
         mBatInfoReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(final Context context, final Intent intent) {
-                String action = intent.getAction();
-
-                if (Intent.ACTION_SCREEN_ON.equals(action)) {
-                    Logger.v(TAG, "screen on");
-                } else if (Intent.ACTION_SCREEN_OFF.equals(action)) {
-                    Logger.v(TAG, "screen off");
-                    //改为60秒一存储
-                    duration = 60000;
-                    duration = SAVE_STEP_DB_DURATION;
-                } else if (Intent.ACTION_USER_PRESENT.equals(action)) {
-                    Logger.v(TAG, "screen unlock");
-//                    save();
-                    saveVitalityStepData(System.currentTimeMillis() / 1000, StepDcretor.CURRENT_SETP);
-
-                    //改为30秒一存储
-                    duration = 30000;
-                    duration = SAVE_STEP_DB_DURATION;
-                } else if (Intent.ACTION_CLOSE_SYSTEM_DIALOGS.equals(intent.getAction())) {
-                    Logger.v(TAG, " receive Intent.ACTION_CLOSE_SYSTEM_DIALOGS");
-                    //保存一次
-//                    save();
-                    saveVitalityStepData(System.currentTimeMillis() / 1000, StepDcretor.CURRENT_SETP);
-
-                } else if (Intent.ACTION_SHUTDOWN.equals(intent.getAction())) {
-                    Logger.v(TAG, " receive ACTION_SHUTDOWN");
-//                    save();
-                    saveVitalityStepData(System.currentTimeMillis() / 1000, StepDcretor.CURRENT_SETP);
-
-                } else if (Intent.ACTION_TIME_TICK.equals(intent.getAction())) {
+                if (Intent.ACTION_TIME_TICK.equals(intent.getAction())) {
                     Logger.e(TAG, "ACTION_TIME_TICK");
                     //如果day变了，计步器从0开始
                     if (1 == compareCurrAndToday(CURRENTDATE)) {
@@ -231,6 +192,11 @@ public class VitalityStepService extends Service {
             }
         };
         registerReceiver(mBatInfoReceiver, filter, "permission.ALLOW_BROADCAST", null);
+    }
+
+    private void startTimeCount() {
+        time = new TimeCount(duration, 1000);
+        time.start();
     }
 
     /**
@@ -254,34 +220,27 @@ public class VitalityStepService extends Service {
         }
     }
 
-    private void startTimeCount() {
-        time = new TimeCount(duration, 1000);
-        time.start();
-    }
-
     /**
      * 更新通知
      */
     private void updateNotification(int stepCount) {
-//        builder = new NotificationCompat.Builder(this);
-//        builder.setPriority(Notification.PRIORITY_MIN);
-//        PendingIntent contentIntent = PendingIntent.getActivity(this, 0,
-//                new Intent(this, MainActivity.class), 0);
-//        builder.setContentIntent(contentIntent);
-//        builder.setLargeIcon(BitmapFactory.decodeResource(getResources(), com.pah.lib.R.drawable.ic_share));
-//        builder.setSmallIcon(com.pah.lib.R.drawable.ic_notice_small);// 设置通知小ICON
-//        builder.setTicker(getString(R.string.app_name));
-//        builder.setContentTitle(getString(R.string.title_notification_bar, String.valueOf(stepCount)));
-//        //设置不可清除
-//        builder.setOngoing(true);
-//        String km = Utils.getDistanceByStep(stepCount);
-//        String calorie = Utils.getCalorieByStep(stepCount);
-//        builder.setContentText(calorie + " 千卡  " + km + " 公里");
-//        Notification notification = builder.build();
-//
-//        startForeground(0, notification);
-//        nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-//        nm.notify(R.string.app_name, notification);
+        builder = new NotificationCompat.Builder(this);
+        builder.setPriority(Notification.PRIORITY_MIN);
+        PendingIntent contentIntent = PendingIntent.getActivity(this, 0,
+                new Intent(), 0);
+        builder.setContentIntent(contentIntent);
+        builder.setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher));
+        builder.setSmallIcon(R.mipmap.ic_launcher);// 设置通知小ICON
+        builder.setTicker(getString(R.string.app_name));
+        builder.setContentTitle(getString(R.string.title_notification_bar, String.valueOf(stepCount)));
+        //设置不可清除
+        builder.setOngoing(true);
+        builder.setContentText("");
+        Notification notification = builder.build();
+
+        startForeground(0, notification);
+        nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        nm.notify(R.string.app_name, notification);
     }
 
     @Override
@@ -319,36 +278,6 @@ public class VitalityStepService extends Service {
     private boolean isStepDetector() {
         Sensor countSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR);
         return null == countSensor ? false : true;
-    }
-
-    private void addSamSungHealthStepCounterListener() {
-//        Logger.e(TAG, "addSamSungHealthStepCounterListener");
-//        //TODO：测试三星S健康
-//        SamSungHealth.getInstance().initSamSungHealth(getApplicationContext());
-//        SamSungHealth.getInstance().connectService(new SamSungHealth.OnSamSungHealthConnectionListener() {
-//            @Override
-//            public void onConnectionFailed(HealthConnectionErrorResult error) {
-//
-//            }
-//
-//            @Override
-//            public void onChangeStepCounter(int step) {
-//                //如果连接上三星S健康，就在S健康上获取数据，不使用传感器
-//                stopStepDetector();
-//
-//                StepDcretor.CURRENT_SETP = step;
-//                updateNotification(StepDcretor.CURRENT_SETP);
-//
-//                mHandler.removeMessages(STEP_COUNTER_STOP_HANDLER);
-//                mHandler.sendEmptyMessageDelayed(STEP_COUNTER_STOP_HANDLER, STEP_COUNTER_STOP_HANDLER_DURATION);
-//            }
-//
-//            @Override
-//            public void onSaveStepCounter(int step, long millisecond) {
-//                saveVitalityStepData(millisecond / 1000, step);
-//
-//            }
-//        });
     }
 
     private void addStepCounterListener() {
@@ -406,6 +335,7 @@ public class VitalityStepService extends Service {
             return;
         }
         stepDetector = new StepDcretor(this);
+        Log.e(TAG, "StepDcretor");
         // 获得传感器的类型，这里获得的类型是加速度传感器
         // 此方法用来注册，只有注册过才会生效，参数：SensorEventListener的实例，Sensor的实例，更新速率
         sensorManager.registerListener(stepDetector, sensor,
@@ -575,17 +505,9 @@ public class VitalityStepService extends Service {
         Logger.e(TAG, "onDestroy:" + StepDcretor.CURRENT_SETP);
         //取消前台进程
         stopForeground(true);
-        StepDbUtils.closeDb();
         if (null != mBatInfoReceiver) {
             unregisterReceiver(mBatInfoReceiver);
         }
-//        if (sensorManager != null && null != stepDetector) {
-//            sensorManager.unregisterListener(stepDetector);
-//            sensorManager = null;
-//        }
-//        if (stepDetector != null) {
-//            stepDetector = null;
-//        }
         Intent intent = new Intent(this, VitalityStepService.class);
         startService(intent);
         super.onDestroy();

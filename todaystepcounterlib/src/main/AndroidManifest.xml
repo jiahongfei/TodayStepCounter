@@ -66,6 +66,14 @@
             </intent-filter>
         </service>
 
+
+        <receiver android:name=".ShutdownReceiver" >
+            <intent-filter>
+                <!-- 关机广播 -->
+                <action android:name="android.intent.action.ACTION_SHUTDOWN" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>
