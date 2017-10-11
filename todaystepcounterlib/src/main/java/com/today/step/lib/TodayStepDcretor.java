@@ -1,21 +1,26 @@
 package com.today.step.lib;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.os.CountDownTimer;
 import android.util.Log;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
 
-public class StepDcretor implements SensorEventListener {
-    private final String TAG = "StepDcretor";
-    /**
-     * 计步器10步保存一次数据库
-     */
-    private static final int SAVE_STEP_COUNT = 10;
+/**
+ * Sensor.TYPE_ACCELEROMETER
+ * 加速度传感器计算当天步数，需要保持后台Service
+ */
+class TodayStepDcretor implements SensorEventListener {
+    private final String TAG = "TodayStepDcretor";
 
     //存放三轴数据
     final int valueNum = 5;
@@ -57,27 +62,70 @@ public class StepDcretor implements SensorEventListener {
      * 0-准备计时   1-计时中   2-正常计步中
      */
     private int CountTimeState = 0;
-    public static int CURRENT_SETP = 0;
-    public static int TEMP_STEP = 0;
+    private static int CURRENT_SETP = 0;
+    private static int TEMP_STEP = 0;
     private int lastStep = -1;
     //用x、y、z轴三个维度算出的平均值
-    public static float average = 0;
+    private static float average = 0;
     private Timer timer;
     // 倒计时3.5秒，3.5秒内不会显示计步，用于屏蔽细微波动
     private long duration = 1500;
     private TimeCount time;
     private OnStepCounterListener mOnStepCounterListener;
-    private static int mSaveStepCount = 0;
+    private Context mContext;
+    private String mTodayDate;
 
-    public StepDcretor(Context context) {
+    public TodayStepDcretor(Context context, OnStepCounterListener onStepCounterListener) {
         super();
+        mContext = context;
+        this.mOnStepCounterListener = onStepCounterListener;
+
+        CURRENT_SETP = (int) PreferencesHelper.getCurrentStep(mContext);
+        mTodayDate = PreferencesHelper.getStepToday(mContext);
+        dateChangeCleanStep();
+        initBroadcastReceiver();
+
+        updateStepCounter();
+    }
+
+    private void initBroadcastReceiver() {
+        final IntentFilter filter = new IntentFilter();
+        filter.addAction(Intent.ACTION_TIME_TICK);
+
+        BroadcastReceiver mBatInfoReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(final Context context, final Intent intent) {
+                if (Intent.ACTION_TIME_TICK.equals(intent.getAction())) {
+                    Logger.e(TAG, "ACTION_TIME_TICK");
+                    dateChangeCleanStep();
+                }
+            }
+        };
+        mContext.registerReceiver(mBatInfoReceiver, filter, "permission.ALLOW_BROADCAST", null);
+    }
+
+    private void dateChangeCleanStep() {
+        //时间改变了清零，或者0点分隔回调
+        if (!getTodayDate().equals(mTodayDate)) {
+            CURRENT_SETP = 0;
+            PreferencesHelper.setCurrentStep(mContext, CURRENT_SETP);
+
+            mTodayDate = getTodayDate();
+            PreferencesHelper.setStepToday(mContext, mTodayDate);
+
+            if(null != mOnStepCounterListener){
+                mOnStepCounterListener.onStepCounterClean();
+            }
+        }
+    }
+
+    private String getTodayDate() {
+        Date date = new Date(System.currentTimeMillis());
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        return sdf.format(date);
     }
 
     public void onAccuracyChanged(Sensor arg0, int arg1) {
-    }
-
-    public void setOnStepCounterListener(OnStepCounterListener onStepCounterListener) {
-        mOnStepCounterListener = onStepCounterListener;
     }
 
     public void onSensorChanged(SensorEvent event) {
@@ -137,23 +185,10 @@ public class StepDcretor implements SensorEventListener {
             Log.v(TAG, "计步中 TEMP_STEP:" + TEMP_STEP);
         } else if (CountTimeState == 2) {
             CURRENT_SETP++;
-            if (mOnStepCounterListener != null) {
-                mOnStepCounterListener.onChangeStepCounter(CURRENT_SETP);
-            }
-            saveStepData(CURRENT_SETP);
-        }
-    }
+            PreferencesHelper.setCurrentStep(mContext, CURRENT_SETP);
 
-    private void saveStepData(int step) {
-        if (mSaveStepCount >= SAVE_STEP_COUNT) {
-            mSaveStepCount = 0;
-            //走10步保存一次数据库
-            Logger.e(TAG, "保存数据库 : " + step + "步");
-            if(null != mOnStepCounterListener){
-                mOnStepCounterListener.onSaveStepCounter(step, System.currentTimeMillis());
-            }
+            updateStepCounter();
         }
-        mSaveStepCount++;
     }
 
     /*
@@ -288,6 +323,16 @@ public class StepDcretor implements SensorEventListener {
             }
         }
 
+    }
+
+    public int getCurrentStep(){
+        return CURRENT_SETP;
+    }
+
+    private void updateStepCounter(){
+        if (null != mOnStepCounterListener) {
+            mOnStepCounterListener.onChangeStepCounter(CURRENT_SETP);
+        }
     }
 
 }

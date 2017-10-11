@@ -7,7 +7,6 @@ import android.content.ServiceConnection;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
-import android.os.Messenger;
 import android.os.RemoteException;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -16,7 +15,8 @@ import android.view.View;
 import android.widget.TextView;
 
 import com.today.step.lib.ISportStepInterface;
-import com.today.step.lib.VitalityStepService;
+import com.today.step.lib.TodayStepManager;
+import com.today.step.lib.TodayStepService;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -32,19 +32,25 @@ public class MainActivity extends AppCompatActivity {
 
     private ISportStepInterface iSportStepInterface;
 
+    private TextView mStepArrayTextView;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Intent intent = new Intent(this, VitalityStepService.class);
+        TodayStepManager.init(getApplication());
+
+        mStepArrayTextView = (TextView)findViewById(R.id.stepArrayTextView);
+
+        Intent intent = new Intent(this, TodayStepService.class);
         startService(intent);
         bindService(intent, new ServiceConnection() {
             @Override
             public void onServiceConnected(ComponentName name, IBinder service) {
                 iSportStepInterface = ISportStepInterface.Stub.asInterface(service);
                 try {
-                    mStepSum = iSportStepInterface.getCurrTimeSportStep();
+                    mStepSum = iSportStepInterface.getCurrentTimeSportStep();
                     updateStepCount();
                 } catch (RemoteException e) {
                     e.printStackTrace();
@@ -70,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
                     if (null != iSportStepInterface) {
                         int step = 0;
                         try {
-                            step = iSportStepInterface.getCurrTimeSportStep();
+                            step = iSportStepInterface.getCurrentTimeSportStep();
                         } catch (RemoteException e) {
                             e.printStackTrace();
                         }
@@ -95,7 +101,20 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onClick(View view){
-        Intent intent = new Intent(this, SHealthActivity.class);
-        startActivity(intent);
+        switch (view.getId()){
+            case R.id.stepArrayButton:{
+                if(null != iSportStepInterface){
+                    try {
+                        String stepArray = iSportStepInterface.getTodaySportStepArray();
+                        mStepArrayTextView.setText(stepArray);
+                    } catch (RemoteException e) {
+                        e.printStackTrace();
+                    }
+                }
+                break;
+            }
+            default:break;
+        }
+
     }
 }

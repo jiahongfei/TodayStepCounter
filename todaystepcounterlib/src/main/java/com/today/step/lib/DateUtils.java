@@ -5,15 +5,9 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 /**
- * @author jiahongfei jiahongfeinew@163.com
- * @version V1.0.0
- * @Title: DateUtils.java
- * @Package com.android.support.framework.utils
- * @ClassName: DateUtils
  * @Description: 时间工具类（时间格式转换方便类）
- * @date Nov 5, 2014 2:18:17 PM
  */
-public class DateUtils {
+class DateUtils {
 
     static {
        initDataUtils();

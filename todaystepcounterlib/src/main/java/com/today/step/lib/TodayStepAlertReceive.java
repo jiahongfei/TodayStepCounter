@@ -9,19 +9,21 @@ import android.content.Intent;
  * Created by jiahongfei on 2017/6/18.
  */
 
-public class StepAlertReceive extends BroadcastReceiver {
+public class TodayStepAlertReceive extends BroadcastReceiver {
 
     public static final String ACTION_STEP_ALERT = "action_step_alert";
 
     @Override
     public void onReceive(Context context, Intent intent) {
         if (ACTION_STEP_ALERT.equals(intent.getAction())) {
-            boolean separate = intent.getBooleanExtra(VitalityStepService.INTENT_NAME_0_SEPARATE, false);
-            Intent stepInent = new Intent(context, VitalityStepService.class);
-            stepInent.putExtra(VitalityStepService.INTENT_NAME_0_SEPARATE, separate);
+            boolean separate = intent.getBooleanExtra(TodayStepService.INTENT_NAME_0_SEPARATE, false);
+            Intent stepInent = new Intent(context, TodayStepService.class);
+            stepInent.putExtra(TodayStepService.INTENT_NAME_0_SEPARATE, separate);
             context.startService(stepInent);
 
             StepAlertManagerUtils.set0SeparateAlertManager(context.getApplicationContext());
+
+            Logger.e("TodayStepAlertReceive","TodayStepAlertReceive");
         }
 
     }

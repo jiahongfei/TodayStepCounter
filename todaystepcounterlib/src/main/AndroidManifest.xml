@@ -1,14 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.today.step.lib">
 
-    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="com.android.launcher.permission.READ_SETTINGS" />
@@ -26,31 +20,12 @@
         android:label="@string/app_name"
         android:supportsRtl="true">
 
-        <!--接入三星SHealth start-->
-        <meta-data
-            android:name="com.samsung.android.health.permission.read"
-            android:value="com.samsung.health.step_count;com.samsung.shealth.step_daily_trend" />
-
-        <!--接入三星SHealth end-->
-
-        <receiver
-            android:name=".BootCompleteReceiver"
-            android:enabled="true"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
-
-        <receiver
-            android:name=".StepAlertReceive"
-            android:enabled="true"
-            android:exported="false"></receiver>
-
+        <!--计步Service-->
         <service
-            android:name=".VitalityStepService"
+            android:name=".TodayStepService"
             android:enabled="true"
             android:exported="false"
+            android:process=":todaystep"
             android:launchMode="singleInstance"
             android:priority="1000">
             <intent-filter>
@@ -66,13 +41,30 @@
             </intent-filter>
         </service>
 
+        <!--开机自启动-->
+        <receiver
+            android:name=".TodayStepBootCompleteReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
-        <receiver android:name=".ShutdownReceiver" >
+        <!-- 关机广播 -->
+        <receiver android:name=".TodayStepShutdownReceiver" >
             <intent-filter>
                 <!-- 关机广播 -->
                 <action android:name="android.intent.action.ACTION_SHUTDOWN" />
             </intent-filter>
         </receiver>
+
+        <!--0点分隔alertmanager-->
+        <receiver
+            android:name=".TodayStepAlertReceive"
+            android:enabled="true"
+            android:exported="false"></receiver>
+
 
     </application>
 

@@ -4,7 +4,7 @@ package com.today.step.lib;
  * Created by jiahongfei on 2017/6/30.
  */
 
-public interface OnStepCounterListener {
+interface OnStepCounterListener {
 
     /**
      * 用于显示步数
@@ -13,10 +13,8 @@ public interface OnStepCounterListener {
     void onChangeStepCounter(int step);
 
     /**
-     * 用于保存数据
-     * @param step
-     * @param millisecond
+     * 步数清零监听，由于跨越0点需要重新计步
      */
-    void onSaveStepCounter(int step, long millisecond);
+    void onStepCounterClean();
 
 }

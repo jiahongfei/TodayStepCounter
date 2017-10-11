@@ -4,21 +4,20 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
-import android.widget.Toast;
 
 /**
  * Created by jiahongfei on 2017/9/27.
  */
 
-public class ShutdownReceiver extends BroadcastReceiver {
+public class TodayStepShutdownReceiver extends BroadcastReceiver {
 
-    private static final String TAG = "ShutdownReceiver";
+    private static final String TAG = "TodayStepShutdownReceiver";
 
     @Override
     public void onReceive(Context context, Intent intent) {
         if (intent.getAction().equals(Intent.ACTION_SHUTDOWN)) {
-            Toast.makeText(context,"shutdown",Toast.LENGTH_SHORT).show();
-            Log.e(TAG,"shutdown");
+            Logger.e(TAG,"TodayStepShutdownReceiver");
+            PreferencesHelper.setShutdown(context,true);
         }
     }
 

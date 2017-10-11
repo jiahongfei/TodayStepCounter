@@ -8,10 +8,10 @@ import android.util.Log;
  *
  * @author Administrator
  */
-public class Logger {
-    private static final String TAG = "PAH";
+class Logger {
+    private static final String TAG = "Logger";
 
-    private static boolean sIsDebug = true;
+    public static boolean sIsDebug = BuildConfig.TODAY_STEP_DEBUG;
     
     public static void v(String message) {
         if (sIsDebug)
