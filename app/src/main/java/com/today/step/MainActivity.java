@@ -39,15 +39,18 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        //初始化计步模块
         TodayStepManager.init(getApplication());
 
         mStepArrayTextView = (TextView)findViewById(R.id.stepArrayTextView);
 
+        //开启计步Service，同时绑定Activity进行aidl通信
         Intent intent = new Intent(this, TodayStepService.class);
         startService(intent);
         bindService(intent, new ServiceConnection() {
             @Override
             public void onServiceConnected(ComponentName name, IBinder service) {
+                //Activity和Service通过aidl进行通信
                 iSportStepInterface = ISportStepInterface.Stub.asInterface(service);
                 try {
                     mStepSum = iSportStepInterface.getCurrentTimeSportStep();
@@ -64,6 +67,7 @@ public class MainActivity extends AppCompatActivity {
 
             }
         }, Context.BIND_AUTO_CREATE);
+
     }
 
     class TodayStepCounterCall implements Handler.Callback{
@@ -72,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
         public boolean handleMessage(Message msg) {
             switch (msg.what) {
                 case REFRESH_STEP_WHAT: {
-
+                    //每隔500毫秒获取一次计步数据刷新UI
                     if (null != iSportStepInterface) {
                         int step = 0;
                         try {
@@ -98,11 +102,13 @@ public class MainActivity extends AppCompatActivity {
         Log.e(TAG,"updateStepCount : " + mStepSum);
         TextView stepTextView = (TextView)findViewById(R.id.stepTextView);
         stepTextView.setText(mStepSum + "步");
+
     }
 
     public void onClick(View view){
         switch (view.getId()){
             case R.id.stepArrayButton:{
+                //显示当天计步数据详细，步数对应当前时间
                 if(null != iSportStepInterface){
                     try {
                         String stepArray = iSportStepInterface.getTodaySportStepArray();

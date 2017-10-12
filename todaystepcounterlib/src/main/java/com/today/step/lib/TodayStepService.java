@@ -27,6 +27,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class TodayStepService extends Service {
 
@@ -34,6 +35,9 @@ public class TodayStepService extends Service {
 
     //回调30次保存一次数据库
     private static final int DB_SAVE_COUNTER = 30;
+
+    //传感器的采样周期，这里使用SensorManager.SENSOR_DELAY_FASTEST，如果使用SENSOR_DELAY_UI会导致部分手机后台清理内存之后传感器不记步
+    private static final int SAMPLING_PERIOD_US = SensorManager.SENSOR_DELAY_FASTEST;
 
     public static final String INTENT_NAME_0_SEPARATE = "intent_name_0_separate";
     public static final String INTENT_NAME_BOOT = "intent_name_boot";
@@ -54,6 +58,9 @@ public class TodayStepService extends Service {
     private boolean mBoot = false;
 
     private int mDbSaveCount = 0;
+
+    //TODO:测试用
+//    private int mTestCount = 0;
 
     private TodayStepDBHelper mTodayStepDBHelper;
 
@@ -92,6 +99,21 @@ public class TodayStepService extends Service {
                 Toast.makeText(getApplicationContext(), "Lib 当前手机使用计步传感器", Toast.LENGTH_LONG).show();
 
             }
+
+//            new Thread(new Runnable() {
+//                @Override
+//                public void run() {
+//                    while(true){
+//                        try {
+//                            TimeUnit.MILLISECONDS.sleep(1*1000);
+//                        } catch (InterruptedException e) {
+//                            e.printStackTrace();
+//                        }
+//                        Logger.e(TAG,"mTestCount : " + mTestCount++);
+//                    }
+//                }
+//            }).start();
+
         }
         //TODO:测试数据End
 
@@ -110,21 +132,16 @@ public class TodayStepService extends Service {
         builder = new NotificationCompat.Builder(this);
         builder.setPriority(Notification.PRIORITY_MIN);
         PendingIntent contentIntent = PendingIntent.getActivity(this, 100,
-                new Intent(), 0);
+                new Intent(), PendingIntent.FLAG_UPDATE_CURRENT);
         builder.setContentIntent(contentIntent);
         builder.setSmallIcon(R.mipmap.ic_launcher);// 设置通知小ICON
 
-//        builder.setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher));
-//        builder.setTicker(getString(R.string.app_name));
-//        builder.setContentTitle(getString(R.string.title_notification_bar, String.valueOf(0)));
-//        builder.setContentText("");
-//
         builder.setCustomContentView(mRemoteViews);
         //设置不可清除
         builder.setOngoing(true);
         notification = builder.build();
-
-        startForeground(0, notification);
+        //将Service设置前台，这里的id和notify的id一定要相同否则会出现后台清理内存Service被杀死通知还存在的bug
+        startForeground(R.string.app_name, notification);
         nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         nm.notify(R.string.app_name, notification);
 
@@ -138,7 +155,7 @@ public class TodayStepService extends Service {
 
     private void startStepDetector() {
 
-        getLock(this);
+//        getLock(this);
 
         //android4.4以后如果有stepcounter可以使用计步传感器
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT && isStepCounter()) {
@@ -162,7 +179,7 @@ public class TodayStepService extends Service {
         }
         stepCounter = new TodayStepCounter(getApplicationContext(), mOnStepCounterListener, mSeparate, mBoot);
         Logger.e(TAG, "countSensor");
-        sensorManager.registerListener(stepCounter, countSensor, SensorManager.SENSOR_DELAY_UI);
+        sensorManager.registerListener(stepCounter, countSensor, SAMPLING_PERIOD_US);
     }
 
     private void addBasePedoListener() {
@@ -183,8 +200,7 @@ public class TodayStepService extends Service {
         Log.e(TAG, "TodayStepDcretor");
         // 获得传感器的类型，这里获得的类型是加速度传感器
         // 此方法用来注册，只有注册过才会生效，参数：SensorEventListener的实例，Sensor的实例，更新速率
-        sensorManager.registerListener(stepDetector, sensor,
-                SensorManager.SENSOR_DELAY_UI);
+        sensorManager.registerListener(stepDetector, sensor, SAMPLING_PERIOD_US);
     }
 
     @Override
