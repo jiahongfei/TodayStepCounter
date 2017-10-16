@@ -7,6 +7,7 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.BitmapFactory;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.os.Build;
@@ -16,7 +17,6 @@ import android.os.PowerManager.WakeLock;
 import android.os.RemoteException;
 import android.support.v7.app.NotificationCompat;
 import android.util.Log;
-import android.widget.RemoteViews;
 import android.widget.Toast;
 
 import org.json.JSONArray;
@@ -53,7 +53,6 @@ public class TodayStepService extends Service {
     private NotificationManager nm;
     Notification notification;
     private NotificationCompat.Builder builder;
-    private RemoteViews mRemoteViews;
 
     private boolean mSeparate = false;
     private boolean mBoot = false;
@@ -123,13 +122,6 @@ public class TodayStepService extends Service {
 
     private void initNotification() {
 
-        if(!Logger.sIsDebug){
-            return ;
-        }
-
-        mRemoteViews = new RemoteViews(getPackageName(), R.layout.remote_view_step);
-        mRemoteViews.setTextViewText(R.id.messageTextView, getString(R.string.title_notification_bar, String.valueOf(0)));
-
         builder = new NotificationCompat.Builder(this);
         builder.setPriority(Notification.PRIORITY_MIN);
         PendingIntent contentIntent = PendingIntent.getActivity(this, 100,
@@ -137,7 +129,13 @@ public class TodayStepService extends Service {
         builder.setContentIntent(contentIntent);
         builder.setSmallIcon(R.mipmap.ic_launcher);// 设置通知小ICON
 
-        builder.setCustomContentView(mRemoteViews);
+        builder.setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher));
+        builder.setTicker(getString(R.string.app_name));
+        builder.setContentTitle(getString(R.string.title_notification_bar, String.valueOf(0)));
+        String km = getDistanceByStep(0);
+        String calorie = getCalorieByStep(0);
+        builder.setContentText(calorie + " 千卡  " + km + " 公里");
+
         //设置不可清除
         builder.setOngoing(true);
         notification = builder.build();
@@ -268,10 +266,14 @@ public class TodayStepService extends Service {
      * 更新通知
      */
     private void updateNotification(int stepCount) {
-        if(null == mRemoteViews || null == nm){
+        if( null == builder || null == nm){
             return ;
         }
-        mRemoteViews.setTextViewText(R.id.messageTextView, getString(R.string.title_notification_bar, String.valueOf(stepCount)));
+        builder.setContentTitle(getString(R.string.title_notification_bar, String.valueOf(stepCount)));
+        String km = getDistanceByStep(stepCount);
+        String calorie = getCalorieByStep(stepCount);
+        builder.setContentText(calorie + " 千卡  " + km + " 公里");
+        notification = builder.build();
         nm.notify(R.string.app_name, notification);
     }
 
@@ -357,5 +359,15 @@ public class TodayStepService extends Service {
             }
         }
         return (mWakeLock);
+    }
+
+    // 公里计算公式
+    public String getDistanceByStep(int steps) {
+        return String.format("%.2f", steps * 0.6f / 1000);
+    }
+
+    // 千卡路里计算公式
+    public String getCalorieByStep(int steps) {
+        return String.format("%.1f", steps * 0.6f * 60 * 1.036f / 1000);
     }
 }
