@@ -41,6 +41,7 @@ public class TodayStepService extends Service {
 
     public static final String INTENT_NAME_0_SEPARATE = "intent_name_0_separate";
     public static final String INTENT_NAME_BOOT = "intent_name_boot";
+    public static final String INTENT_JOB_SCHEDULER = "intent_job_scheduler";
 
     public static int CURRENT_SETP = 0;
 
@@ -291,6 +292,10 @@ public class TodayStepService extends Service {
 
         @Override
         public void onStepCounterClean() {
+
+            CURRENT_SETP = 0;
+            updateNotification(CURRENT_SETP);
+
             cleanDb();
         }
 

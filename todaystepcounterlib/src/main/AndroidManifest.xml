@@ -65,6 +65,8 @@
             android:enabled="true"
             android:exported="false"></receiver>
 
+        <service android:name=".JobSchedulerService"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
 
     </application>
 

@@ -89,6 +89,7 @@ class TodayStepCounter implements SensorEventListener {
             int counterStep = (int) event.values[0];
 
             if (mCleanStep) {
+                //TODO:只有传感器回调才会记录当前传感器步数，然后对当天步数进行清零，所以步数会少，少的步数等于传感器启动需要的步数，假如传感器需要10步进行启动，那么就少10步
                cleanStep(counterStep);
             } else {
                 //处理关机启动
