@@ -59,9 +59,6 @@ public class TodayStepService extends Service {
 
     private int mDbSaveCount = 0;
 
-    //TODO:测试用
-//    private int mTestCount = 0;
-
     private TodayStepDBHelper mTodayStepDBHelper;
 
     @Override
@@ -74,6 +71,8 @@ public class TodayStepService extends Service {
         sensorManager = (SensorManager) this
                 .getSystemService(SENSOR_SERVICE);
 
+        initNotification(CURRENT_SETP);
+
     }
 
     @Override
@@ -85,42 +84,26 @@ public class TodayStepService extends Service {
             mBoot = intent.getBooleanExtra(INTENT_NAME_BOOT, false);
         }
 
-        initNotification();
         updateNotification(CURRENT_SETP);
 
         //注册传感器
         startStepDetector();
 
         //TODO:测试数据Start
-        if(Logger.sIsDebug) {
-            if (!isStepCounter()) {
-                Toast.makeText(getApplicationContext(), "Lib 当前手机没有计步传感器", Toast.LENGTH_LONG).show();
-            } else {
-                Toast.makeText(getApplicationContext(), "Lib 当前手机使用计步传感器", Toast.LENGTH_LONG).show();
-
-            }
-
-//            new Thread(new Runnable() {
-//                @Override
-//                public void run() {
-//                    while(true){
-//                        try {
-//                            TimeUnit.MILLISECONDS.sleep(1*1000);
-//                        } catch (InterruptedException e) {
-//                            e.printStackTrace();
-//                        }
-//                        Logger.e(TAG,"mTestCount : " + mTestCount++);
-//                    }
-//                }
-//            }).start();
-
-        }
+//        if(Logger.sIsDebug) {
+//            if (!isStepCounter()) {
+//                Toast.makeText(getApplicationContext(), "Lib 当前手机没有计步传感器", Toast.LENGTH_LONG).show();
+//            } else {
+//                Toast.makeText(getApplicationContext(), "Lib 当前手机使用计步传感器", Toast.LENGTH_LONG).show();
+//
+//            }
+//        }
         //TODO:测试数据End
 
         return START_STICKY;
     }
 
-    private void initNotification() {
+    private void initNotification(int currentStep) {
 
         builder = new NotificationCompat.Builder(this);
         builder.setPriority(Notification.PRIORITY_MIN);
@@ -131,9 +114,9 @@ public class TodayStepService extends Service {
 
         builder.setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher));
         builder.setTicker(getString(R.string.app_name));
-        builder.setContentTitle(getString(R.string.title_notification_bar, String.valueOf(0)));
-        String km = getDistanceByStep(0);
-        String calorie = getCalorieByStep(0);
+        builder.setContentTitle(getString(R.string.title_notification_bar, String.valueOf(currentStep)));
+        String km = getDistanceByStep(currentStep);
+        String calorie = getCalorieByStep(currentStep);
         builder.setContentText(calorie + " 千卡  " + km + " 公里");
 
         //设置不可清除
@@ -157,7 +140,7 @@ public class TodayStepService extends Service {
 //        getLock(this);
 
         //android4.4以后如果有stepcounter可以使用计步传感器
-        if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT && isStepCounter()) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT && isStepCounter()) {
             addStepCounterListener();
         } else {
             addBasePedoListener();
@@ -304,6 +287,12 @@ public class TodayStepService extends Service {
     };
 
     private final ISportStepInterface.Stub mIBinder = new ISportStepInterface.Stub() {
+
+        private static final String SPORT_DATE = "sportDate";
+        private static final String STEP_NUM = "stepNum";
+        private static final String DISTANCE = "km";
+        private static final String CALORIE = "kaluli";
+
         @Override
         public int getCurrentTimeSportStep() throws RemoteException {
             return CURRENT_SETP;
@@ -322,8 +311,10 @@ public class TodayStepService extends Service {
                     try {
                         JSONObject subObject = new JSONObject();
                         subObject.put(TodayStepDBHelper.TODAY,todayStepData.getToday());
-                        subObject.put(TodayStepDBHelper.DATE,todayStepData.getDate());
-                        subObject.put(TodayStepDBHelper.STEP,todayStepData.getStep());
+                        subObject.put(SPORT_DATE,todayStepData.getDate());
+                        subObject.put(STEP_NUM,todayStepData.getStep());
+                        subObject.put(DISTANCE,getDistanceByStep(todayStepData.getStep()));
+                        subObject.put(CALORIE,getCalorieByStep(todayStepData.getStep()));
                         jsonArray.put(subObject);
                     } catch (JSONException e) {
                         e.printStackTrace();
@@ -362,12 +353,12 @@ public class TodayStepService extends Service {
     }
 
     // 公里计算公式
-    public String getDistanceByStep(int steps) {
+    public String getDistanceByStep(long steps) {
         return String.format("%.2f", steps * 0.6f / 1000);
     }
 
     // 千卡路里计算公式
-    public String getCalorieByStep(int steps) {
+    public String getCalorieByStep(long steps) {
         return String.format("%.1f", steps * 0.6f * 60 * 1.036f / 1000);
     }
 }
