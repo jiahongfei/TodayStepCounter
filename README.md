@@ -2,13 +2,13 @@
 
 [介绍请查看简书点击这里](http://www.jianshu.com/p/cfc2a200e46d)
 
-####接入方法
-1.先下载计步demo TodayStepCounter
-2.demo项目结构如下图：
+#### 接入方法
+1.先下载计步demo TodayStepCounter<br>
+2.demo项目结构如下图：<br>
 ![TodayStepCounter项目结构图.png](http://upload-images.jianshu.io/upload_images/4158487-33c3d03eb306c583.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-由图可见*todaystepcounterlib*是计步模块封装好的Module，它对外提供的接口就是*ISportStepInterface.aidl*
-3.如何接入：
-查看对外接口*ISportStepInterface.aidl*如下代码：
+由图可见*todaystepcounterlib*是计步模块封装好的Module，它对外提供的接口就是*ISportStepInterface.aidl*<br>
+3.如何接入：<br>
+查看对外接口*ISportStepInterface.aidl*如下代码：<br>
 ```
 // ISportStepInterface.aidl
 package com.today.step.lib;
@@ -23,7 +23,7 @@ interface ISportStepInterface {
      String getTodaySportStepArray();
 }
 ```
-查看使用代码*MainActivity.java*，里面关键代码有注释非常简单
+查看使用代码*MainActivity.java*，里面关键代码有注释非常简单<br>
 ```
 public class MainActivity extends AppCompatActivity {
     private static String TAG = "MainActivity";
