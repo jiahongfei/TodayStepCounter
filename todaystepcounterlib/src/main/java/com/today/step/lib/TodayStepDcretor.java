@@ -326,6 +326,7 @@ class TodayStepDcretor implements SensorEventListener {
     }
 
     public int getCurrentStep(){
+        CURRENT_SETP = (int) PreferencesHelper.getCurrentStep(mContext);
         return CURRENT_SETP;
     }
 

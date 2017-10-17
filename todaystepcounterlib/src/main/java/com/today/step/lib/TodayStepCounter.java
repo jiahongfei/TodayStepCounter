@@ -195,6 +195,7 @@ class TodayStepCounter implements SensorEventListener {
     }
 
     public int getCurrentStep(){
+        sCurrStep = (int) PreferencesHelper.getCurrentStep(mContext);
         return sCurrStep;
     }
 
