@@ -5,7 +5,7 @@
 #### 接入方法
 1.先下载计步demo TodayStepCounter<br>
 2.demo项目结构如下图：<br>
-![TodayStepCounter项目结构图.png](http://upload-images.jianshu.io/upload_images/4158487-33c3d03eb306c583.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+![TodayStepCounter项目结构图.png](http://upload-images.jianshu.io/upload_images/4158487-33c3d03eb306c583.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)<br>
 由图可见*todaystepcounterlib*是计步模块封装好的Module，它对外提供的接口就是*ISportStepInterface.aidl*<br>
 3.如何接入：<br>
 查看对外接口*ISportStepInterface.aidl*如下代码：<br>
