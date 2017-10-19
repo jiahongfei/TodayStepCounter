@@ -143,14 +143,14 @@ public class TodayStepService extends Service implements Handler.Callback {
             }
         }
         builder.setContentIntent(contentIntent);
-        int smallIcon = getResources().getIdentifier("ic_launcher", "mipmap", getPackageName());
+        int smallIcon = getResources().getIdentifier("icon_step_small", "mipmap", getPackageName());
         if(0 != smallIcon){
             Logger.e(TAG,"smallIcon");
             builder.setSmallIcon(smallIcon);
         }else {
             builder.setSmallIcon(R.mipmap.ic_notification_default);// 设置通知小ICON
         }
-        int largeIcon = getResources().getIdentifier("ic_launcher", "mipmap", getPackageName());
+        int largeIcon = getResources().getIdentifier("icon_step_large", "mipmap", getPackageName());
         if(0 != largeIcon) {
             Logger.e(TAG,"largeIcon");
             builder.setLargeIcon(BitmapFactory.decodeResource(getResources(), largeIcon));
