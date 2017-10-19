@@ -95,17 +95,20 @@ class TodayStepDcretor implements SensorEventListener {
     private void initBroadcastReceiver() {
         final IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_TIME_TICK);
-
+        filter.addAction(Intent.ACTION_DATE_CHANGED);
         BroadcastReceiver mBatInfoReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(final Context context, final Intent intent) {
-                if (Intent.ACTION_TIME_TICK.equals(intent.getAction())) {
+                if (Intent.ACTION_TIME_TICK.equals(intent.getAction())
+                        || Intent.ACTION_TIME_CHANGED.equals(intent.getAction())) {
                     Logger.e(TAG, "ACTION_TIME_TICK");
+                    //service存活做0点分隔
                     dateChangeCleanStep();
+
                 }
             }
         };
-        mContext.registerReceiver(mBatInfoReceiver, filter, "permission.ALLOW_BROADCAST", null);
+        mContext.registerReceiver(mBatInfoReceiver, filter);
     }
 
     private void dateChangeCleanStep() {

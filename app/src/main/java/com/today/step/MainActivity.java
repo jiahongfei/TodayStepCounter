@@ -21,7 +21,7 @@ import com.today.step.lib.TodayStepService;
 public class MainActivity extends AppCompatActivity {
 
     private static String TAG = "MainActivity";
-    
+
     private static final int REFRESH_STEP_WHAT = 0;
 
     //循环取当前时刻的步数中间的间隔时间
@@ -42,7 +42,7 @@ public class MainActivity extends AppCompatActivity {
         //初始化计步模块
         TodayStepManager.init(getApplication());
 
-        mStepArrayTextView = (TextView)findViewById(R.id.stepArrayTextView);
+        mStepArrayTextView = (TextView) findViewById(R.id.stepArrayTextView);
 
         //开启计步Service，同时绑定Activity进行aidl通信
         Intent intent = new Intent(this, TodayStepService.class);
@@ -70,7 +70,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    class TodayStepCounterCall implements Handler.Callback{
+    class TodayStepCounterCall implements Handler.Callback {
 
         @Override
         public boolean handleMessage(Message msg) {
@@ -99,17 +99,17 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateStepCount() {
-        Log.e(TAG,"updateStepCount : " + mStepSum);
-        TextView stepTextView = (TextView)findViewById(R.id.stepTextView);
+        Log.e(TAG, "updateStepCount : " + mStepSum);
+        TextView stepTextView = (TextView) findViewById(R.id.stepTextView);
         stepTextView.setText(mStepSum + "步");
 
     }
 
-    public void onClick(View view){
-        switch (view.getId()){
-            case R.id.stepArrayButton:{
+    public void onClick(View view) {
+        switch (view.getId()) {
+            case R.id.stepArrayButton: {
                 //显示当天计步数据详细，步数对应当前时间
-                if(null != iSportStepInterface){
+                if (null != iSportStepInterface) {
                     try {
                         String stepArray = iSportStepInterface.getTodaySportStepArray();
                         mStepArrayTextView.setText(stepArray);
@@ -119,8 +119,8 @@ public class MainActivity extends AppCompatActivity {
                 }
                 break;
             }
-            default:break;
+            default:
+                break;
         }
-
     }
 }

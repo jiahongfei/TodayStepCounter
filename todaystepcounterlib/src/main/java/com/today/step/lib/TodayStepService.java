@@ -6,6 +6,8 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.BitmapFactory;
 import android.hardware.Sensor;
@@ -14,22 +16,18 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
-import android.os.PowerManager;
-import android.os.PowerManager.WakeLock;
 import android.os.RemoteException;
 import android.support.v7.app.NotificationCompat;
+import android.text.TextUtils;
 import android.util.Log;
-import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 public class TodayStepService extends Service implements Handler.Callback {
 
@@ -43,6 +41,8 @@ public class TodayStepService extends Service implements Handler.Callback {
 
     private static final int HANDLER_WHAT_SAVE_STEP = 0;
     private static final int LAST_SAVE_STEP_DURATION = 5000;
+
+    private static final int BROADCAST_REQUEST_CODE = 100;
 
     public static final String INTENT_NAME_0_SEPARATE = "intent_name_0_separate";
     public static final String INTENT_NAME_BOOT = "intent_name_boot";
@@ -74,7 +74,7 @@ public class TodayStepService extends Service implements Handler.Callback {
                 Logger.e(TAG, "HANDLER_WHAT_SAVE_STEP");
                 mDbSaveCount = 0;
 
-                saveDb(true,CURRENT_SETP);
+                saveDb(true, CURRENT_SETP);
                 break;
             }
             default:
@@ -131,12 +131,33 @@ public class TodayStepService extends Service implements Handler.Callback {
 
         builder = new NotificationCompat.Builder(this);
         builder.setPriority(Notification.PRIORITY_MIN);
-        PendingIntent contentIntent = PendingIntent.getActivity(this, 100,
-                new Intent(), PendingIntent.FLAG_UPDATE_CURRENT);
-        builder.setContentIntent(contentIntent);
-        builder.setSmallIcon(R.mipmap.ic_launcher);// 设置通知小ICON
 
-        builder.setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher));
+        String receiverName = getReceiver(getApplicationContext());
+        PendingIntent contentIntent = PendingIntent.getBroadcast(this, BROADCAST_REQUEST_CODE, new Intent(), PendingIntent.FLAG_UPDATE_CURRENT);
+        if (!TextUtils.isEmpty(receiverName)) {
+            try {
+                contentIntent = PendingIntent.getBroadcast(this, BROADCAST_REQUEST_CODE, new Intent(this, Class.forName(receiverName)), PendingIntent.FLAG_UPDATE_CURRENT);
+            } catch (Exception e) {
+                e.printStackTrace();
+                contentIntent = PendingIntent.getBroadcast(this, BROADCAST_REQUEST_CODE, new Intent(), PendingIntent.FLAG_UPDATE_CURRENT);
+            }
+        }
+        builder.setContentIntent(contentIntent);
+        int smallIcon = getResources().getIdentifier("ic_launcher", "mipmap", getPackageName());
+        if(0 != smallIcon){
+            Logger.e(TAG,"smallIcon");
+            builder.setSmallIcon(smallIcon);
+        }else {
+            builder.setSmallIcon(R.mipmap.ic_notification_default);// 设置通知小ICON
+        }
+        int largeIcon = getResources().getIdentifier("ic_launcher", "mipmap", getPackageName());
+        if(0 != largeIcon) {
+            Logger.e(TAG,"largeIcon");
+            builder.setLargeIcon(BitmapFactory.decodeResource(getResources(), largeIcon));
+        }else{
+            builder.setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.ic_notification_default));
+
+        }
         builder.setTicker(getString(R.string.app_name));
         builder.setContentTitle(getString(R.string.title_notification_bar, String.valueOf(currentStep)));
         String km = getDistanceByStep(currentStep);
@@ -245,12 +266,11 @@ public class TodayStepService extends Service implements Handler.Callback {
         }
         mDbSaveCount = 0;
 
-        saveDb(false,currentStep);
+        saveDb(false, currentStep);
     }
 
     /**
-     *
-     * @param handler true handler回调保存步数，否false
+     * @param handler     true handler回调保存步数，否false
      * @param currentStep
      */
     private void saveDb(boolean handler, int currentStep) {
@@ -261,7 +281,7 @@ public class TodayStepService extends Service implements Handler.Callback {
         todayStepData.setStep(currentStep);
         if (null != mTodayStepDBHelper) {
             Logger.e(TAG, "saveDb handler : " + handler);
-            if(!handler || !mTodayStepDBHelper.isExist(todayStepData)) {
+            if (!handler || !mTodayStepDBHelper.isExist(todayStepData)) {
                 Logger.e(TAG, "saveDb currentStep : " + currentStep);
                 mTodayStepDBHelper.insert(todayStepData);
             }
@@ -374,6 +394,40 @@ public class TodayStepService extends Service implements Handler.Callback {
     // 千卡路里计算公式
     private String getCalorieByStep(long steps) {
         return String.format("%.1f", steps * 0.6f * 60 * 1.036f / 1000);
+    }
+
+    public static String getReceiver(Context context) {
+        try {
+            PackageInfo packageInfo = context.getPackageManager().getPackageInfo(context.getPackageName(), PackageManager.GET_RECEIVERS);
+            ActivityInfo[] activityInfos = packageInfo.receivers;
+            if (null != activityInfos && activityInfos.length > 0) {
+                for (int i = 0; i < activityInfos.length; i++) {
+                    String receiverName = activityInfos[i].name;
+                    Class superClazz = Class.forName(receiverName).getSuperclass();
+                    int count = 1;
+                    while (null != superClazz) {
+                        if (superClazz.getName().equals("java.lang.Object")) {
+                            break;
+                        }
+                        if (superClazz.getName().equals(BaseClickBroadcast.class.getName())) {
+                            Log.e(TAG, "receiverName : " + receiverName);
+                            return receiverName;
+                        }
+                        if (count > 20) {
+                            //用来做容错，如果20个基类还不到Object直接跳出防止while死循环
+                            break;
+                        }
+                        count++;
+                        superClazz = superClazz.getSuperclass();
+                        Log.e(TAG, "superClazz : " + superClazz);
+
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
 }
