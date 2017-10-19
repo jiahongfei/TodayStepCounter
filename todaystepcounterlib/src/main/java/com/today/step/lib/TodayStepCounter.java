@@ -7,9 +7,11 @@ import android.content.IntentFilter;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
+import android.os.PowerManager;
 import android.os.SystemClock;
 
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 
 /**
@@ -35,6 +37,8 @@ class TodayStepCounter implements SensorEventListener {
 
     private boolean mSeparate = false;
     private boolean mBoot = false;
+
+    private PowerManager.WakeLock mWakeLock;
 
     public TodayStepCounter(Context context, OnStepCounterListener onStepCounterListener, boolean separate, boolean boot) {
         this.mContext = context;
@@ -163,6 +167,9 @@ class TodayStepCounter implements SensorEventListener {
     private void dateChangeCleanStep() {
         //时间改变了清零，或者0点分隔回调
         if (!getTodayDate().equals(mTodayDate) || mSeparate) {
+
+            getLock(mContext);
+
             mCleanStep = true;
             PreferencesHelper.setCleanStep(mContext, mCleanStep);
 
@@ -202,5 +209,30 @@ class TodayStepCounter implements SensorEventListener {
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
+    }
+
+    synchronized private PowerManager.WakeLock getLock(Context context) {
+        if (mWakeLock != null) {
+            if (mWakeLock.isHeld())
+                mWakeLock.release();
+            mWakeLock = null;
+        }
+
+        if (mWakeLock == null) {
+            PowerManager mgr = (PowerManager) context
+                    .getSystemService(Context.POWER_SERVICE);
+            mWakeLock = mgr.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
+                    TodayStepService.class.getName());
+            mWakeLock.setReferenceCounted(true);
+            Calendar c = Calendar.getInstance();
+            c.setTimeInMillis(System.currentTimeMillis());
+            int hour = c.get(Calendar.HOUR_OF_DAY);
+            if (hour >= 23 || hour <= 6) {
+                mWakeLock.acquire(5000);
+            } else {
+                mWakeLock.acquire(300000);
+            }
+        }
+        return (mWakeLock);
     }
 }

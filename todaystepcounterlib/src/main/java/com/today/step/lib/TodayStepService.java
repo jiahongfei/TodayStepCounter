@@ -11,7 +11,9 @@ import android.graphics.BitmapFactory;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Message;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.os.RemoteException;
@@ -29,15 +31,18 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-public class TodayStepService extends Service {
+public class TodayStepService extends Service implements Handler.Callback {
 
     private static final String TAG = "TodayStepService";
 
-    //回调30次保存一次数据库
-    private static final int DB_SAVE_COUNTER = 30;
+    //保存数据库频率
+    private static final int DB_SAVE_COUNTER = 50;
 
     //传感器的采样周期，这里使用SensorManager.SENSOR_DELAY_FASTEST，如果使用SENSOR_DELAY_UI会导致部分手机后台清理内存之后传感器不记步
     private static final int SAMPLING_PERIOD_US = SensorManager.SENSOR_DELAY_FASTEST;
+
+    private static final int HANDLER_WHAT_SAVE_STEP = 0;
+    private static final int LAST_SAVE_STEP_DURATION = 5000;
 
     public static final String INTENT_NAME_0_SEPARATE = "intent_name_0_separate";
     public static final String INTENT_NAME_BOOT = "intent_name_boot";
@@ -45,7 +50,6 @@ public class TodayStepService extends Service {
 
     public static int CURRENT_SETP = 0;
 
-    private WakeLock mWakeLock;
     private SensorManager sensorManager;
     private TodayStepDcretor stepDetector;
     private TodayStepCounter stepCounter;
@@ -60,6 +64,24 @@ public class TodayStepService extends Service {
     private int mDbSaveCount = 0;
 
     private TodayStepDBHelper mTodayStepDBHelper;
+
+    private final Handler sHandler = new Handler(this);
+
+    @Override
+    public boolean handleMessage(Message msg) {
+        switch (msg.what) {
+            case HANDLER_WHAT_SAVE_STEP: {
+                Logger.e(TAG, "HANDLER_WHAT_SAVE_STEP");
+                mDbSaveCount = 0;
+
+                saveDb(true,CURRENT_SETP);
+                break;
+            }
+            default:
+                break;
+        }
+        return false;
+    }
 
     @Override
     public void onCreate() {
@@ -83,6 +105,8 @@ public class TodayStepService extends Service {
             mSeparate = intent.getBooleanExtra(INTENT_NAME_0_SEPARATE, false);
             mBoot = intent.getBooleanExtra(INTENT_NAME_BOOT, false);
         }
+
+        mDbSaveCount = 0;
 
         updateNotification(CURRENT_SETP);
 
@@ -208,23 +232,39 @@ public class TodayStepService extends Service {
     private void updateTodayStep(int currentStep) {
         CURRENT_SETP = currentStep;
         updateNotification(CURRENT_SETP);
-        saveDb(currentStep);
+        saveStep(currentStep);
     }
 
-    private void saveDb(int currentStep) {
+    private void saveStep(int currentStep) {
+        sHandler.removeMessages(HANDLER_WHAT_SAVE_STEP);
+        sHandler.sendEmptyMessageDelayed(HANDLER_WHAT_SAVE_STEP, LAST_SAVE_STEP_DURATION);
+
         if (DB_SAVE_COUNTER > mDbSaveCount) {
             mDbSaveCount++;
             return;
         }
         mDbSaveCount = 0;
 
-        Logger.e(TAG, "saveDb currentStep : " + currentStep);
+        saveDb(false,currentStep);
+    }
+
+    /**
+     *
+     * @param handler true handler回调保存步数，否false
+     * @param currentStep
+     */
+    private void saveDb(boolean handler, int currentStep) {
+
         TodayStepData todayStepData = new TodayStepData();
         todayStepData.setToday(getTodayDate());
         todayStepData.setDate(System.currentTimeMillis());
         todayStepData.setStep(currentStep);
         if (null != mTodayStepDBHelper) {
-            mTodayStepDBHelper.insert(todayStepData);
+            Logger.e(TAG, "saveDb handler : " + handler);
+            if(!handler || !mTodayStepDBHelper.isExist(todayStepData)) {
+                Logger.e(TAG, "saveDb currentStep : " + currentStep);
+                mTodayStepDBHelper.insert(todayStepData);
+            }
         }
     }
 
@@ -249,8 +289,8 @@ public class TodayStepService extends Service {
      * 更新通知
      */
     private void updateNotification(int stepCount) {
-        if( null == builder || null == nm){
-            return ;
+        if (null == builder || null == nm) {
+            return;
         }
         builder.setContentTitle(getString(R.string.title_notification_bar, String.valueOf(stepCount)));
         String km = getDistanceByStep(stepCount);
@@ -272,7 +312,6 @@ public class TodayStepService extends Service {
         @Override
         public void onChangeStepCounter(int step) {
             updateTodayStep(step);
-
         }
 
         @Override
@@ -301,64 +340,40 @@ public class TodayStepService extends Service {
         @Override
         public String getTodaySportStepArray() throws RemoteException {
             if (null != mTodayStepDBHelper) {
-                List<TodayStepData>  todayStepDataArrayList = mTodayStepDBHelper.getQueryAll();
-                if(null == todayStepDataArrayList){
+                List<TodayStepData> todayStepDataArrayList = mTodayStepDBHelper.getQueryAll();
+                if (null == todayStepDataArrayList || 0 == todayStepDataArrayList.size()) {
                     return null;
                 }
                 JSONArray jsonArray = new JSONArray();
-                for (int i = 0; i<todayStepDataArrayList.size(); i++){
+                for (int i = 0; i < todayStepDataArrayList.size(); i++) {
                     TodayStepData todayStepData = todayStepDataArrayList.get(i);
                     try {
                         JSONObject subObject = new JSONObject();
-                        subObject.put(TodayStepDBHelper.TODAY,todayStepData.getToday());
-                        subObject.put(SPORT_DATE,todayStepData.getDate());
-                        subObject.put(STEP_NUM,todayStepData.getStep());
-                        subObject.put(DISTANCE,getDistanceByStep(todayStepData.getStep()));
-                        subObject.put(CALORIE,getCalorieByStep(todayStepData.getStep()));
+                        subObject.put(TodayStepDBHelper.TODAY, todayStepData.getToday());
+                        subObject.put(SPORT_DATE, todayStepData.getDate());
+                        subObject.put(STEP_NUM, todayStepData.getStep());
+                        subObject.put(DISTANCE, getDistanceByStep(todayStepData.getStep()));
+                        subObject.put(CALORIE, getCalorieByStep(todayStepData.getStep()));
                         jsonArray.put(subObject);
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
                 }
-                Logger.e(TAG,jsonArray.toString());
+                Logger.e(TAG, jsonArray.toString());
                 return jsonArray.toString();
             }
             return null;
         }
     };
 
-    synchronized private WakeLock getLock(Context context) {
-        if (mWakeLock != null) {
-            if (mWakeLock.isHeld())
-                mWakeLock.release();
-            mWakeLock = null;
-        }
-
-        if (mWakeLock == null) {
-            PowerManager mgr = (PowerManager) context
-                    .getSystemService(Context.POWER_SERVICE);
-            mWakeLock = mgr.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
-                    TodayStepService.class.getName());
-            mWakeLock.setReferenceCounted(true);
-            Calendar c = Calendar.getInstance();
-            c.setTimeInMillis(System.currentTimeMillis());
-            int hour = c.get(Calendar.HOUR_OF_DAY);
-            if (hour >= 23 || hour <= 6) {
-                mWakeLock.acquire(5000);
-            } else {
-                mWakeLock.acquire(300000);
-            }
-        }
-        return (mWakeLock);
-    }
-
     // 公里计算公式
-    public String getDistanceByStep(long steps) {
+    private String getDistanceByStep(long steps) {
         return String.format("%.2f", steps * 0.6f / 1000);
     }
 
     // 千卡路里计算公式
-    public String getCalorieByStep(long steps) {
+    private String getCalorieByStep(long steps) {
         return String.format("%.1f", steps * 0.6f * 60 * 1.036f / 1000);
     }
+
 }

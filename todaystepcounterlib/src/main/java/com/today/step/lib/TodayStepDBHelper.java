@@ -33,6 +33,7 @@ public class TodayStepDBHelper extends SQLiteOpenHelper {
             + STEP + " long);";
     private static final String SQL_DELETE_TABLE = "DROP TABLE IF EXISTS " + TABLE_NAME;
     private static final String SQL_QUERY_ALL = "SELECT * FROM " + TABLE_NAME;
+    private static final String SQL_QUERY_STEP = "SELECT * FROM " + TABLE_NAME + " WHERE " + TODAY + " = ? AND " + STEP + " = ?";
 
     public TodayStepDBHelper(Context context) {
         super(context, DATABASE_NAME, null, VERSION);
@@ -51,7 +52,14 @@ public class TodayStepDBHelper extends SQLiteOpenHelper {
         onCreate(db);
     }
 
-    public void createTable(){
+    public synchronized boolean isExist(TodayStepData todayStepData){
+        Cursor cursor = getReadableDatabase().rawQuery(SQL_QUERY_STEP,new String[]{todayStepData.getToday(),todayStepData.getStep() + ""});
+        boolean exist = cursor.getCount() > 0 ? true : false;
+        cursor.close();
+        return exist;
+    }
+
+    public synchronized void createTable(){
         getWritableDatabase().execSQL(SQL_CREATE_TABLE);
     }
 
@@ -76,6 +84,7 @@ public class TodayStepDBHelper extends SQLiteOpenHelper {
             todayStepData.setStep(step);
             todayStepDatas.add(todayStepData);
         }
+        cursor.close();
         return todayStepDatas;
     }
 

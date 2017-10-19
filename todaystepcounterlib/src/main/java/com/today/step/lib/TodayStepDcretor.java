@@ -8,9 +8,11 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.os.CountDownTimer;
+import android.os.PowerManager;
 import android.util.Log;
 
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -75,6 +77,8 @@ class TodayStepDcretor implements SensorEventListener {
     private Context mContext;
     private String mTodayDate;
 
+    private PowerManager.WakeLock mWakeLock;
+
     public TodayStepDcretor(Context context, OnStepCounterListener onStepCounterListener) {
         super();
         mContext = context;
@@ -107,6 +111,9 @@ class TodayStepDcretor implements SensorEventListener {
     private void dateChangeCleanStep() {
         //时间改变了清零，或者0点分隔回调
         if (!getTodayDate().equals(mTodayDate)) {
+
+            getLock(mContext);
+
             CURRENT_SETP = 0;
             PreferencesHelper.setCurrentStep(mContext, CURRENT_SETP);
 
@@ -334,6 +341,31 @@ class TodayStepDcretor implements SensorEventListener {
         if (null != mOnStepCounterListener) {
             mOnStepCounterListener.onChangeStepCounter(CURRENT_SETP);
         }
+    }
+
+    synchronized private PowerManager.WakeLock getLock(Context context) {
+        if (mWakeLock != null) {
+            if (mWakeLock.isHeld())
+                mWakeLock.release();
+            mWakeLock = null;
+        }
+
+        if (mWakeLock == null) {
+            PowerManager mgr = (PowerManager) context
+                    .getSystemService(Context.POWER_SERVICE);
+            mWakeLock = mgr.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
+                    TodayStepService.class.getName());
+            mWakeLock.setReferenceCounted(true);
+            Calendar c = Calendar.getInstance();
+            c.setTimeInMillis(System.currentTimeMillis());
+            int hour = c.get(Calendar.HOUR_OF_DAY);
+            if (hour >= 23 || hour <= 6) {
+                mWakeLock.acquire(5000);
+            } else {
+                mWakeLock.acquire(300000);
+            }
+        }
+        return (mWakeLock);
     }
 
 }
