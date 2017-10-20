@@ -185,6 +185,9 @@ class TodayStepCounter implements SensorEventListener {
 
             mSeparate = false;
 
+            sCurrStep = 0;
+            PreferencesHelper.setCurrentStep(mContext, sCurrStep);
+
             if(null != mOnStepCounterListener){
                 mOnStepCounterListener.onStepCounterClean();
             }

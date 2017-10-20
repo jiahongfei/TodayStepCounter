@@ -30,7 +30,7 @@ class StepAlertManagerUtils {
         String tomorrow = DateUtils.dateFormat(calendar.getTimeInMillis(),"yyyy-MM-dd");
         long timeInMillis = DateUtils.getDateMillis(tomorrow+ " 00:00:00","yyyy-MM-dd HH:mm:ss");
 
-        Logger.e(TAG,DateUtils.dateFormat(timeInMillis,"yyyy-MM-dd HH:mm:ss"));
+        Logger.e(TAG, DateUtils.dateFormat(timeInMillis,"yyyy-MM-dd HH:mm:ss"));
 
         AlarmManager alarmManager = (AlarmManager) application.getSystemService(ALARM_SERVICE);
         Intent i1 = new Intent(application, TodayStepAlertReceive.class);

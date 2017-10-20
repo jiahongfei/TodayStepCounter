@@ -28,7 +28,7 @@ public class TodayStepManager {
 
         StepAlertManagerUtils.set0SeparateAlertManager(application);
 
-        if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
 //            initJobScheduler(application);
         }
 
