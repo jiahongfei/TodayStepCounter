@@ -34,10 +34,14 @@ public class MainActivity extends AppCompatActivity {
 
     private TextView mStepArrayTextView;
 
+    private TSApplication tsApplication;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        tsApplication = (TSApplication) getApplication();
 
         //初始化计步模块
         TodayStepManager.init(getApplication());
@@ -67,6 +71,7 @@ public class MainActivity extends AppCompatActivity {
 
             }
         }, Context.BIND_AUTO_CREATE);
+
 
     }
 
@@ -112,6 +117,30 @@ public class MainActivity extends AppCompatActivity {
                 if (null != iSportStepInterface) {
                     try {
                         String stepArray = iSportStepInterface.getTodaySportStepArray();
+                        mStepArrayTextView.setText(stepArray);
+                    } catch (RemoteException e) {
+                        e.printStackTrace();
+                    }
+                }
+                break;
+            }
+            case R.id.stepArrayButton1:{
+                //显示当天计步数据详细，步数对应当前时间
+                if (null != iSportStepInterface) {
+                    try {
+                        String stepArray = iSportStepInterface.getTodaySportStepArrayByDate("2018-01-19");
+                        mStepArrayTextView.setText(stepArray);
+                    } catch (RemoteException e) {
+                        e.printStackTrace();
+                    }
+                }
+                break;
+            }
+            case R.id.stepArrayButton2:{
+                //显示当天计步数据详细，步数对应当前时间
+                if (null != iSportStepInterface) {
+                    try {
+                        String stepArray = iSportStepInterface.getTodaySportStepArrayByStartDateAndDays("2018-01-20", 6);
                         mStepArrayTextView.setText(stepArray);
                     } catch (RemoteException e) {
                         e.printStackTrace();

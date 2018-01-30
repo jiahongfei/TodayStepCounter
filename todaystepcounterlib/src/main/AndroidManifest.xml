@@ -15,10 +15,7 @@
         android:name="android.hardware.sensor.stepdetector"
         android:required="true" />
 
-    <application
-        android:allowBackup="true"
-        android:label="@string/app_name"
-        android:supportsRtl="true">
+    <application>
 
         <!--计步Service-->
         <service

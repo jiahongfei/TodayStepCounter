@@ -33,6 +33,9 @@ public class TodayStepService extends Service implements Handler.Callback {
 
     private static final String TAG = "TodayStepService";
 
+    /**数据库中保存多少天的运动数据*/
+    private static final int DB_LIMIT = 2;
+
     //保存数据库频率
     private static final int DB_SAVE_COUNTER = 50;
 
@@ -51,7 +54,8 @@ public class TodayStepService extends Service implements Handler.Callback {
     public static int CURRENT_SETP = 0;
 
     private SensorManager sensorManager;
-    private TodayStepDcretor stepDetector;
+    //    private TodayStepDcretor stepDetector;
+    private TodayStepDetector mStepDetector;
     private TodayStepCounter stepCounter;
 
     private NotificationManager nm;
@@ -63,7 +67,7 @@ public class TodayStepService extends Service implements Handler.Callback {
 
     private int mDbSaveCount = 0;
 
-    private TodayStepDBHelper mTodayStepDBHelper;
+    private ITodayStepDBHelper mTodayStepDBHelper;
 
     private final Handler sHandler = new Handler(this);
 
@@ -88,7 +92,7 @@ public class TodayStepService extends Service implements Handler.Callback {
         Logger.e(TAG, "onCreate:" + CURRENT_SETP);
         super.onCreate();
 
-        mTodayStepDBHelper = new TodayStepDBHelper(getApplicationContext());
+        mTodayStepDBHelper = TodayStepDBHelper.factory(getApplicationContext());
 
         sensorManager = (SensorManager) this
                 .getSystemService(SENSOR_SERVICE);
@@ -144,17 +148,17 @@ public class TodayStepService extends Service implements Handler.Callback {
         }
         builder.setContentIntent(contentIntent);
         int smallIcon = getResources().getIdentifier("icon_step_small", "mipmap", getPackageName());
-        if(0 != smallIcon){
-            Logger.e(TAG,"smallIcon");
+        if (0 != smallIcon) {
+            Logger.e(TAG, "smallIcon");
             builder.setSmallIcon(smallIcon);
-        }else {
+        } else {
             builder.setSmallIcon(R.mipmap.ic_notification_default);// 设置通知小ICON
         }
         int largeIcon = getResources().getIdentifier("icon_step_large", "mipmap", getPackageName());
-        if(0 != largeIcon) {
-            Logger.e(TAG,"largeIcon");
+        if (0 != largeIcon) {
+            Logger.e(TAG, "largeIcon");
             builder.setLargeIcon(BitmapFactory.decodeResource(getResources(), largeIcon));
-        }else{
+        } else {
             builder.setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.ic_notification_default));
 
         }
@@ -211,9 +215,26 @@ public class TodayStepService extends Service implements Handler.Callback {
 
     private void addBasePedoListener() {
         Logger.e(TAG, "addBasePedoListener");
-        if (null != stepDetector) {
+//        if (null != stepDetector) {
+//            Logger.e(TAG, "已经注册TYPE_ACCELEROMETER");
+//            CURRENT_SETP = stepDetector.getCurrentStep();
+//            updateNotification(CURRENT_SETP);
+//            return;
+//        }
+//        //没有计步器的时候开启定时器保存数据
+//        Sensor sensor = sensorManager
+//                .getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+//        if (null == sensor) {
+//            return;
+//        }
+//        stepDetector = new TodayStepDcretor(this, mOnStepCounterListener);
+//        Log.e(TAG, "TodayStepDcretor");
+//        // 获得传感器的类型，这里获得的类型是加速度传感器
+//        // 此方法用来注册，只有注册过才会生效，参数：SensorEventListener的实例，Sensor的实例，更新速率
+//        sensorManager.registerListener(stepDetector, sensor, SAMPLING_PERIOD_US);
+        if (null != mStepDetector) {
             Logger.e(TAG, "已经注册TYPE_ACCELEROMETER");
-            CURRENT_SETP = stepDetector.getCurrentStep();
+            CURRENT_SETP = mStepDetector.getCurrentStep();
             updateNotification(CURRENT_SETP);
             return;
         }
@@ -223,11 +244,11 @@ public class TodayStepService extends Service implements Handler.Callback {
         if (null == sensor) {
             return;
         }
-        stepDetector = new TodayStepDcretor(this, mOnStepCounterListener);
+        mStepDetector = new TodayStepDetector(this, mOnStepCounterListener);
         Log.e(TAG, "TodayStepDcretor");
         // 获得传感器的类型，这里获得的类型是加速度传感器
         // 此方法用来注册，只有注册过才会生效，参数：SensorEventListener的实例，Sensor的实例，更新速率
-        sensorManager.registerListener(stepDetector, sensor, SAMPLING_PERIOD_US);
+        sensorManager.registerListener(mStepDetector, sensor, SAMPLING_PERIOD_US);
     }
 
     @Override
@@ -293,10 +314,16 @@ public class TodayStepService extends Service implements Handler.Callback {
         Logger.e(TAG, "cleanDb");
 
         mDbSaveCount = 0;
-        if (null != mTodayStepDBHelper) {
-            mTodayStepDBHelper.deleteTable();
-            mTodayStepDBHelper.createTable();
+
+        if(null != mTodayStepDBHelper) {
+            mTodayStepDBHelper.clearCapacity(DateUtils.dateFormat(System.currentTimeMillis(), "yyyy-MM-dd"), DB_LIMIT);
         }
+
+//        if (null != mTodayStepDBHelper) {
+        //保存多天的步数
+//            mTodayStepDBHelper.deleteTable();
+//            mTodayStepDBHelper.createTable();
+//        }
     }
 
     private String getTodayDate() {
@@ -357,28 +384,55 @@ public class TodayStepService extends Service implements Handler.Callback {
             return CURRENT_SETP;
         }
 
+        private JSONArray getSportStepJsonArray(List<TodayStepData> todayStepDataArrayList) {
+            JSONArray jsonArray = new JSONArray();
+            if (null == todayStepDataArrayList || 0 == todayStepDataArrayList.size()) {
+                return jsonArray;
+            }
+            for (int i = 0; i < todayStepDataArrayList.size(); i++) {
+                TodayStepData todayStepData = todayStepDataArrayList.get(i);
+                try {
+                    JSONObject subObject = new JSONObject();
+                    subObject.put(TodayStepDBHelper.TODAY, todayStepData.getToday());
+                    subObject.put(SPORT_DATE, todayStepData.getDate());
+                    subObject.put(STEP_NUM, todayStepData.getStep());
+                    subObject.put(DISTANCE, getDistanceByStep(todayStepData.getStep()));
+                    subObject.put(CALORIE, getCalorieByStep(todayStepData.getStep()));
+                    jsonArray.put(subObject);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+            return jsonArray;
+        }
+
         @Override
         public String getTodaySportStepArray() throws RemoteException {
             if (null != mTodayStepDBHelper) {
                 List<TodayStepData> todayStepDataArrayList = mTodayStepDBHelper.getQueryAll();
-                if (null == todayStepDataArrayList || 0 == todayStepDataArrayList.size()) {
-                    return null;
-                }
-                JSONArray jsonArray = new JSONArray();
-                for (int i = 0; i < todayStepDataArrayList.size(); i++) {
-                    TodayStepData todayStepData = todayStepDataArrayList.get(i);
-                    try {
-                        JSONObject subObject = new JSONObject();
-                        subObject.put(TodayStepDBHelper.TODAY, todayStepData.getToday());
-                        subObject.put(SPORT_DATE, todayStepData.getDate());
-                        subObject.put(STEP_NUM, todayStepData.getStep());
-                        subObject.put(DISTANCE, getDistanceByStep(todayStepData.getStep()));
-                        subObject.put(CALORIE, getCalorieByStep(todayStepData.getStep()));
-                        jsonArray.put(subObject);
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-                }
+                JSONArray jsonArray = getSportStepJsonArray(todayStepDataArrayList);
+                Logger.e(TAG, jsonArray.toString());
+                return jsonArray.toString();
+            }
+            return null;
+        }
+
+        @Override
+        public String getTodaySportStepArrayByDate(String date) throws RemoteException {
+            if (null != mTodayStepDBHelper) {
+                List<TodayStepData> todayStepDataArrayList = mTodayStepDBHelper.getStepListByDate(date);
+                JSONArray jsonArray = getSportStepJsonArray(todayStepDataArrayList);
+                Logger.e(TAG, jsonArray.toString());
+                return jsonArray.toString();
+            }
+            return null;
+        }
+
+        @Override
+        public String getTodaySportStepArrayByStartDateAndDays(String date, int days) throws RemoteException {
+            if (null != mTodayStepDBHelper) {
+                List<TodayStepData> todayStepDataArrayList = mTodayStepDBHelper.getStepListByStartDateAndDays(date, days);
+                JSONArray jsonArray = getSportStepJsonArray(todayStepDataArrayList);
                 Logger.e(TAG, jsonArray.toString());
                 return jsonArray.toString();
             }

@@ -9,15 +9,7 @@ import java.util.Date;
  */
 class DateUtils {
 
-    static {
-       initDataUtils();
-    }
-
-    public static void initDataUtils(){
-//        TimeZone tz = TimeZone.getTimeZone("GMT+08:00");
-//        tz.setID("Asia/Shanghai");
-//        TimeZone.setDefault(tz);
-    }
+    private static final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat();
 
     /**
      * 返回一定格式的当前时间
@@ -26,18 +18,18 @@ class DateUtils {
      * @return
      */
     public static String getCurrentDate(String pattern) {
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
+        SIMPLE_DATE_FORMAT.applyPattern(pattern);
         Date date = new Date(System.currentTimeMillis());
-        String dateString = simpleDateFormat.format(date);
+        String dateString = SIMPLE_DATE_FORMAT.format(date);
         return dateString;
 
     }
 
     public static long getDateMillis(String dateString, String pattern) {
-        SimpleDateFormat sdf = new SimpleDateFormat(pattern);
         long millionSeconds = 0;
+        SIMPLE_DATE_FORMAT.applyPattern(pattern);
         try {
-            millionSeconds = sdf.parse(dateString).getTime();
+            millionSeconds = SIMPLE_DATE_FORMAT.parse(dateString).getTime();
         } catch (ParseException e) {
             e.printStackTrace();
         }// 毫秒
@@ -53,9 +45,9 @@ class DateUtils {
      * @return
      */
     public static String dateFormat(long millis, String pattern) {
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
+        SIMPLE_DATE_FORMAT.applyPattern(pattern);
         Date date = new Date(millis);
-        String dateString = simpleDateFormat.format(date);
+        String dateString = SIMPLE_DATE_FORMAT.format(date);
         return dateString;
     }
 
