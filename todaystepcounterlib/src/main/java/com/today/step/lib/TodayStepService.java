@@ -29,6 +29,9 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
+import static com.today.step.lib.SportStepJsonUtils.getCalorieByStep;
+import static com.today.step.lib.SportStepJsonUtils.getDistanceByStep;
+
 public class TodayStepService extends Service implements Handler.Callback {
 
     private static final String TAG = "TodayStepService";
@@ -374,36 +377,13 @@ public class TodayStepService extends Service implements Handler.Callback {
 
     private final ISportStepInterface.Stub mIBinder = new ISportStepInterface.Stub() {
 
-        private static final String SPORT_DATE = "sportDate";
-        private static final String STEP_NUM = "stepNum";
-        private static final String DISTANCE = "km";
-        private static final String CALORIE = "kaluli";
-
         @Override
         public int getCurrentTimeSportStep() throws RemoteException {
             return CURRENT_SETP;
         }
 
         private JSONArray getSportStepJsonArray(List<TodayStepData> todayStepDataArrayList) {
-            JSONArray jsonArray = new JSONArray();
-            if (null == todayStepDataArrayList || 0 == todayStepDataArrayList.size()) {
-                return jsonArray;
-            }
-            for (int i = 0; i < todayStepDataArrayList.size(); i++) {
-                TodayStepData todayStepData = todayStepDataArrayList.get(i);
-                try {
-                    JSONObject subObject = new JSONObject();
-                    subObject.put(TodayStepDBHelper.TODAY, todayStepData.getToday());
-                    subObject.put(SPORT_DATE, todayStepData.getDate());
-                    subObject.put(STEP_NUM, todayStepData.getStep());
-                    subObject.put(DISTANCE, getDistanceByStep(todayStepData.getStep()));
-                    subObject.put(CALORIE, getCalorieByStep(todayStepData.getStep()));
-                    jsonArray.put(subObject);
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-            }
-            return jsonArray;
+            return SportStepJsonUtils.getSportStepJsonArray(todayStepDataArrayList);
         }
 
         @Override
@@ -439,16 +419,6 @@ public class TodayStepService extends Service implements Handler.Callback {
             return null;
         }
     };
-
-    // 公里计算公式
-    private String getDistanceByStep(long steps) {
-        return String.format("%.2f", steps * 0.6f / 1000);
-    }
-
-    // 千卡路里计算公式
-    private String getCalorieByStep(long steps) {
-        return String.format("%.1f", steps * 0.6f * 60 * 1.036f / 1000);
-    }
 
     public static String getReceiver(Context context) {
         try {
