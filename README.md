@@ -9,19 +9,19 @@
 > 针对计步模块进行优化[TodayStepCounterV2.0.0](https://github.com/jiahongfei/TodayStepCounter).
 Android搞计步真是坑爹，每天都能收到很多用户进行投诉，于是我对投诉进行分析整理出几个优化点进行优化。
 
-[第一篇Android计步模块优化（今日步数）](https://www.jianshu.com/p/cfc2a200e46d)
+> [第一篇Android计步模块优化（今日步数）](https://www.jianshu.com/p/cfc2a200e46d)
 
-[Github TodayStepCounter](https://github.com/jiahongfei/TodayStepCounter)
+> [Github TodayStepCounter](https://github.com/jiahongfei/TodayStepCounter)
 
 ![目录.png](http://upload-images.jianshu.io/upload_images/4158487-7d83f4039efda845.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
-###优化点
+### 优化点
 1. 计步器可以根据需要记录多天步数。
 2. 增加根据时间返回步数列表接口。
 3. 修改Android4.4以下计步算法，[开源算法](https://github.com/finnfu/stepcount)。
 4. 增加使用文案。
 
-####1.计步器可以根据需要记录多天步数
+#### 1.计步器可以根据需要记录多天步数
 第一版数据库中只保存的是当天的以时间分隔的步数。
 
 由于后台Service不联网上传数据需要打开App进行上传。有很多用户晚上忘记上传步数了导致第二天早上看前一天的步数少了很多，其实是晚上没有打开app上传步数。
@@ -38,7 +38,7 @@ public class TodayStepService extends Service implements Handler.Callback {
 ```
 如上代码`DB_LIMIT`为数据库中保存几天的运动数据，我们可以直接修改。
 
-####2. 增加根据时间返回步数列表接口
+#### 2. 增加根据时间返回步数列表接口
 由于数据库中存储的是多天的数据，那么我们就有需要根据时间来查询某一天的运动数据，或者一段时间间隔的运动数据。
 
 我提供了如下接口来获得。
@@ -76,7 +76,7 @@ interface ISportStepInterface {
       String getTodaySportStepArrayByStartDateAndDays(String date, int days);
 }
 ```
-####3. 修改Android4.4以下计步算法，[开源算法](https://github.com/finnfu/stepcount)
+#### 3. 修改Android4.4以下计步算法，[开源算法](https://github.com/finnfu/stepcount)
 Android4.4以下（不包括4.4）版本没有计步协处理器，只能通过加速度传感器进行获取，而且计步Service必须保证在后台存活，之前找的记步算法也是开源的，但是在很多低端手机上计步非常不准确，总是少了很多步数，有的彻底不记步，于是又在github上重新找了一个算法，虽然这个算法还是有问题，但是比之前的好多了，这个算法需要自己进行优化，由于时间太紧了我也就直接用了，有时间的话还是要好好看看源码，优化一下。
 
 [开源算法](https://github.com/finnfu/stepcount)这个是源码，如果有大神对他进行优化，非常欢迎和我进行讨论。
@@ -90,7 +90,7 @@ Android4.4以下（不包括4.4）版本没有计步协处理器，只能通过�
 2. 每天晚上走完需要打开app进行上传步数，通知栏上的步数是本地的不是服务器上的。
 3. 如果手机用加速度传感器进行计步，需要在文案上增加如何使app计步模块在后台自启动，防止被第三方安全软件杀掉，等等。
 
-###测试代码
+### 测试代码
 ```
     public void onClick(View view) {
         switch (view.getId()) {
