@@ -10,11 +10,15 @@ import android.os.Bundle;
 
 public class TSApplication extends Application {
 
+    private static TSApplication sApplication;
+
     private int appCount = 0;
 
     @Override
     public void onCreate() {
         super.onCreate();
+
+        sApplication = this;
 
         registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
             @Override
@@ -61,4 +65,9 @@ public class TSApplication extends Application {
     public boolean isForeground(){
         return appCount > 0;
     }
+
+    public static TSApplication getApplication() {
+        return sApplication;
+    }
+
 }

@@ -72,7 +72,6 @@ public class MainActivity extends AppCompatActivity {
             }
         }, Context.BIND_AUTO_CREATE);
 
-
     }
 
     class TodayStepCounterCall implements Handler.Callback {
@@ -113,7 +112,7 @@ public class MainActivity extends AppCompatActivity {
     public void onClick(View view) {
         switch (view.getId()) {
             case R.id.stepArrayButton: {
-                //显示当天计步数据详细，步数对应当前时间
+                //获取所有步数列表
                 if (null != iSportStepInterface) {
                     try {
                         String stepArray = iSportStepInterface.getTodaySportStepArray();
@@ -125,7 +124,7 @@ public class MainActivity extends AppCompatActivity {
                 break;
             }
             case R.id.stepArrayButton1:{
-                //显示当天计步数据详细，步数对应当前时间
+                //根据时间来获取步数列表
                 if (null != iSportStepInterface) {
                     try {
                         String stepArray = iSportStepInterface.getTodaySportStepArrayByDate("2018-01-19");
@@ -137,7 +136,7 @@ public class MainActivity extends AppCompatActivity {
                 break;
             }
             case R.id.stepArrayButton2:{
-                //显示当天计步数据详细，步数对应当前时间
+                //获取多天步数列表
                 if (null != iSportStepInterface) {
                     try {
                         String stepArray = iSportStepInterface.getTodaySportStepArrayByStartDateAndDays("2018-01-20", 6);

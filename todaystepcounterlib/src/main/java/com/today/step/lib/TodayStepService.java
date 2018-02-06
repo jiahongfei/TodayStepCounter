@@ -22,8 +22,6 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -36,7 +34,9 @@ public class TodayStepService extends Service implements Handler.Callback {
 
     private static final String TAG = "TodayStepService";
 
-    /**数据库中保存多少天的运动数据*/
+    /**
+     * 数据库中保存多少天的运动数据
+     */
     private static final int DB_LIMIT = 2;
 
     //保存数据库频率
@@ -74,6 +74,8 @@ public class TodayStepService extends Service implements Handler.Callback {
 
     private final Handler sHandler = new Handler(this);
 
+    private Microlog4Android mMicrolog4Android = new Microlog4Android();
+
     @Override
     public boolean handleMessage(Message msg) {
         switch (msg.what) {
@@ -102,6 +104,9 @@ public class TodayStepService extends Service implements Handler.Callback {
 
         initNotification(CURRENT_SETP);
 
+        if(null != mMicrolog4Android) {
+            mMicrolog4Android.configure(this);
+        }
     }
 
     @Override
@@ -130,6 +135,10 @@ public class TodayStepService extends Service implements Handler.Callback {
 //            }
 //        }
         //TODO:测试数据End
+
+        if (null != mMicrolog4Android) {
+            mMicrolog4Android.error(DateUtils.getCurrentDate("yyyy-MM-dd HH:mm:ss") + "   onStartCommand");
+        }
 
         return START_STICKY;
     }
@@ -236,6 +245,7 @@ public class TodayStepService extends Service implements Handler.Callback {
 //        // 此方法用来注册，只有注册过才会生效，参数：SensorEventListener的实例，Sensor的实例，更新速率
 //        sensorManager.registerListener(stepDetector, sensor, SAMPLING_PERIOD_US);
         if (null != mStepDetector) {
+            TodayStepDetector.getLock(this);
             Logger.e(TAG, "已经注册TYPE_ACCELEROMETER");
             CURRENT_SETP = mStepDetector.getCurrentStep();
             updateNotification(CURRENT_SETP);
@@ -275,6 +285,11 @@ public class TodayStepService extends Service implements Handler.Callback {
      * @param currentStep
      */
     private void updateTodayStep(int currentStep) {
+
+        if (null != mMicrolog4Android) {
+            mMicrolog4Android.error(DateUtils.getCurrentDate("yyyy-MM-dd HH:mm:ss") + "   currentStep : " + currentStep);
+        }
+
         CURRENT_SETP = currentStep;
         updateNotification(CURRENT_SETP);
         saveStep(currentStep);
@@ -318,7 +333,7 @@ public class TodayStepService extends Service implements Handler.Callback {
 
         mDbSaveCount = 0;
 
-        if(null != mTodayStepDBHelper) {
+        if (null != mTodayStepDBHelper) {
             mTodayStepDBHelper.clearCapacity(DateUtils.dateFormat(System.currentTimeMillis(), "yyyy-MM-dd"), DB_LIMIT);
         }
 

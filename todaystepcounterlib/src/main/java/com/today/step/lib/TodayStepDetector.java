@@ -63,12 +63,14 @@ class TodayStepDetector implements SensorEventListener{
     private long timeOfLastPeak1 = 0;
     private long timeOfThisPeak1 = 0;
     private String mTodayDate;
-    private PowerManager.WakeLock mWakeLock;
+    private static PowerManager.WakeLock mWakeLock;
 
     public TodayStepDetector(Context context, OnStepCounterListener onStepCounterListener){
         super();
         mContext = context;
         this.mOnStepCounterListener = onStepCounterListener;
+
+        getLock(mContext);
 
         mCount = (int) PreferencesHelper.getCurrentStep(mContext);
         mTodayDate = PreferencesHelper.getStepToday(mContext);
@@ -299,7 +301,7 @@ class TodayStepDetector implements SensorEventListener{
         updateStepCounter();
     }
 
-    synchronized private PowerManager.WakeLock getLock(Context context) {
+    synchronized static PowerManager.WakeLock getLock(Context context) {
         if (mWakeLock != null) {
             if (mWakeLock.isHeld())
                 mWakeLock.release();
@@ -315,11 +317,12 @@ class TodayStepDetector implements SensorEventListener{
             Calendar c = Calendar.getInstance();
             c.setTimeInMillis(System.currentTimeMillis());
             int hour = c.get(Calendar.HOUR_OF_DAY);
-            if (hour >= 23 || hour <= 6) {
-                mWakeLock.acquire(5000);
-            } else {
-                mWakeLock.acquire(300000);
-            }
+//            if (hour >= 23 || hour <= 6) {
+//                mWakeLock.acquire(5000);
+//            } else {
+//                mWakeLock.acquire(300000);
+//            }
+            mWakeLock.acquire();
         }
         return (mWakeLock);
     }
