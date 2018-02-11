@@ -100,7 +100,7 @@ class TodayStepDetector implements SensorEventListener{
         mContext.registerReceiver(mBatInfoReceiver, filter);
     }
 
-    private void dateChangeCleanStep() {
+    private synchronized void dateChangeCleanStep() {
         //时间改变了清零，或者0点分隔回调
         if (!getTodayDate().equals(mTodayDate)) {
 
@@ -127,6 +127,10 @@ class TodayStepDetector implements SensorEventListener{
     }
 
     private void updateStepCounter(){
+
+        //每次回调都判断一下是否跨天
+        dateChangeCleanStep();
+
         if (null != mOnStepCounterListener) {
             mOnStepCounterListener.onChangeStepCounter(mCount);
         }
@@ -153,7 +157,7 @@ class TodayStepDetector implements SensorEventListener{
     * 2.如果检测到了波峰，并且符合时间差以及阈值的条件，则判定为1步
     * 3.符合时间差条件，波峰波谷差值大于initialValue，则将该差值纳入阈值的计算中
     * */
-    public void detectorNewStep(float values) {
+    private void detectorNewStep(float values) {
         if (gravityOld == 0) {
             gravityOld = values;
         } else {
@@ -193,7 +197,7 @@ class TodayStepDetector implements SensorEventListener{
      * 1.观察波形图，可以发现在出现步子的地方，波谷的下一个就是波峰，有比较明显的特征以及差值
      * 2.所以要记录每次的波谷值，为了和下次的波峰做对比
      * */
-    public boolean detectorPeak(float newValue, float oldValue) {
+    private boolean detectorPeak(float newValue, float oldValue) {
         lastStatus = isDirectionUp;
         if (newValue >= oldValue) {
             isDirectionUp = true;
@@ -222,7 +226,7 @@ class TodayStepDetector implements SensorEventListener{
      * 2.记录4个值，存入tempValue[]数组中
      * 3.在将数组传入函数averageValue中计算阈值
      * */
-    public float peakValleyThread(float value) {
+    private float peakValleyThread(float value) {
         float tempThread = ThreadValue;
         if (tempCount < ValueNum) {
             tempValue[tempCount] = value;
@@ -243,7 +247,7 @@ class TodayStepDetector implements SensorEventListener{
      * 1.计算数组的均值
      * 2.通过均值将阈值梯度化在一个范围里
      * */
-    public float averageValue(float value[], int n) {
+    private float averageValue(float value[], int n) {
         float ave = 0;
         for (int i = 0; i < n; i++) {
             ave += value[i];
@@ -270,7 +274,7 @@ class TodayStepDetector implements SensorEventListener{
     * 连续走十步才会开始计步
     * 连续走了9步以下,停留超过3秒,则计数清空
     * */
-    public void countStep() {
+    private void countStep() {
         this.timeOfLastPeak1 = this.timeOfThisPeak1;
         this.timeOfThisPeak1 = System.currentTimeMillis();
         if (this.timeOfThisPeak1 - this.timeOfLastPeak1 <= 3000L){
@@ -293,12 +297,11 @@ class TodayStepDetector implements SensorEventListener{
     }
 
 
-    public void setSteps(int initValue) {
+    private void setSteps(int initValue) {
         this.mCount = initValue;
         this.count = 0;
         timeOfLastPeak1 = 0;
         timeOfThisPeak1 = 0;
-        updateStepCounter();
     }
 
     synchronized static PowerManager.WakeLock getLock(Context context) {
