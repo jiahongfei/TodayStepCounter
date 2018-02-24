@@ -46,7 +46,8 @@ public class TodayStepService extends Service implements Handler.Callback {
     private static final int SAMPLING_PERIOD_US = SensorManager.SENSOR_DELAY_FASTEST;
 
     private static final int HANDLER_WHAT_SAVE_STEP = 0;
-    private static final int LAST_SAVE_STEP_DURATION = 5000;
+    //如果走路如果停止，10秒钟后保存数据库
+    private static final int LAST_SAVE_STEP_DURATION = 10*1000;
 
     private static final int BROADCAST_REQUEST_CODE = 100;
 
@@ -81,6 +82,9 @@ public class TodayStepService extends Service implements Handler.Callback {
         switch (msg.what) {
             case HANDLER_WHAT_SAVE_STEP: {
                 Logger.e(TAG, "HANDLER_WHAT_SAVE_STEP");
+
+                microlog4AndroidError("HANDLER_WHAT_SAVE_STEP");
+
                 mDbSaveCount = 0;
 
                 saveDb(true, CURRENT_SETP);
@@ -136,9 +140,7 @@ public class TodayStepService extends Service implements Handler.Callback {
 //        }
         //TODO:测试数据End
 
-        if (null != mMicrolog4Android) {
-            mMicrolog4Android.error(DateUtils.getCurrentDate("yyyy-MM-dd HH:mm:ss") + "   onStartCommand");
-        }
+        microlog4AndroidError("onStartCommand");
 
         return START_STICKY;
     }
@@ -212,6 +214,7 @@ public class TodayStepService extends Service implements Handler.Callback {
         Logger.e(TAG, "addStepCounterListener");
         if (null != stepCounter) {
             Logger.e(TAG, "已经注册TYPE_STEP_COUNTER");
+            WakeLockUtils.getLock(this);
             CURRENT_SETP = stepCounter.getCurrentStep();
             updateNotification(CURRENT_SETP);
             return;
@@ -227,25 +230,8 @@ public class TodayStepService extends Service implements Handler.Callback {
 
     private void addBasePedoListener() {
         Logger.e(TAG, "addBasePedoListener");
-//        if (null != stepDetector) {
-//            Logger.e(TAG, "已经注册TYPE_ACCELEROMETER");
-//            CURRENT_SETP = stepDetector.getCurrentStep();
-//            updateNotification(CURRENT_SETP);
-//            return;
-//        }
-//        //没有计步器的时候开启定时器保存数据
-//        Sensor sensor = sensorManager
-//                .getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-//        if (null == sensor) {
-//            return;
-//        }
-//        stepDetector = new TodayStepDcretor(this, mOnStepCounterListener);
-//        Log.e(TAG, "TodayStepDcretor");
-//        // 获得传感器的类型，这里获得的类型是加速度传感器
-//        // 此方法用来注册，只有注册过才会生效，参数：SensorEventListener的实例，Sensor的实例，更新速率
-//        sensorManager.registerListener(stepDetector, sensor, SAMPLING_PERIOD_US);
         if (null != mStepDetector) {
-            TodayStepDetector.getLock(this);
+            WakeLockUtils.getLock(this);
             Logger.e(TAG, "已经注册TYPE_ACCELEROMETER");
             CURRENT_SETP = mStepDetector.getCurrentStep();
             updateNotification(CURRENT_SETP);
@@ -286,9 +272,7 @@ public class TodayStepService extends Service implements Handler.Callback {
      */
     private void updateTodayStep(int currentStep) {
 
-        if (null != mMicrolog4Android) {
-            mMicrolog4Android.error(DateUtils.getCurrentDate("yyyy-MM-dd HH:mm:ss") + "   currentStep : " + currentStep);
-        }
+        microlog4AndroidError("   currentStep : " + currentStep);
 
         CURRENT_SETP = currentStep;
         updateNotification(CURRENT_SETP);
@@ -298,6 +282,8 @@ public class TodayStepService extends Service implements Handler.Callback {
     private void saveStep(int currentStep) {
         sHandler.removeMessages(HANDLER_WHAT_SAVE_STEP);
         sHandler.sendEmptyMessageDelayed(HANDLER_WHAT_SAVE_STEP, LAST_SAVE_STEP_DURATION);
+
+        microlog4AndroidError("   mDbSaveCount : " + mDbSaveCount);
 
         if (DB_SAVE_COUNTER > mDbSaveCount) {
             mDbSaveCount++;
@@ -322,6 +308,9 @@ public class TodayStepService extends Service implements Handler.Callback {
             Logger.e(TAG, "saveDb handler : " + handler);
             if (!handler || !mTodayStepDBHelper.isExist(todayStepData)) {
                 Logger.e(TAG, "saveDb currentStep : " + currentStep);
+
+                microlog4AndroidError("saveDb currentStep : " + currentStep);
+
                 mTodayStepDBHelper.insert(todayStepData);
             }
         }
@@ -467,6 +456,12 @@ public class TodayStepService extends Service implements Handler.Callback {
             e.printStackTrace();
         }
         return null;
+    }
+
+    private void microlog4AndroidError(String msg){
+        if (null != mMicrolog4Android) {
+            mMicrolog4Android.error(DateUtils.getCurrentDate("yyyy-MM-dd HH:mm:ss") + "   " + msg);
+        }
     }
 
 }

@@ -63,14 +63,13 @@ class TodayStepDetector implements SensorEventListener{
     private long timeOfLastPeak1 = 0;
     private long timeOfThisPeak1 = 0;
     private String mTodayDate;
-    private static PowerManager.WakeLock mWakeLock;
 
     public TodayStepDetector(Context context, OnStepCounterListener onStepCounterListener){
         super();
         mContext = context;
         this.mOnStepCounterListener = onStepCounterListener;
 
-        getLock(mContext);
+        WakeLockUtils.getLock(mContext);
 
         mCount = (int) PreferencesHelper.getCurrentStep(mContext);
         mTodayDate = PreferencesHelper.getStepToday(mContext);
@@ -104,7 +103,7 @@ class TodayStepDetector implements SensorEventListener{
         //时间改变了清零，或者0点分隔回调
         if (!getTodayDate().equals(mTodayDate)) {
 
-            getLock(mContext);
+            WakeLockUtils.getLock(mContext);
 
             mCount = 0;
             PreferencesHelper.setCurrentStep(mContext, mCount);
@@ -302,32 +301,6 @@ class TodayStepDetector implements SensorEventListener{
         this.count = 0;
         timeOfLastPeak1 = 0;
         timeOfThisPeak1 = 0;
-    }
-
-    synchronized static PowerManager.WakeLock getLock(Context context) {
-        if (mWakeLock != null) {
-            if (mWakeLock.isHeld())
-                mWakeLock.release();
-            mWakeLock = null;
-        }
-
-        if (mWakeLock == null) {
-            PowerManager mgr = (PowerManager) context
-                    .getSystemService(Context.POWER_SERVICE);
-            mWakeLock = mgr.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
-                    TodayStepService.class.getName());
-            mWakeLock.setReferenceCounted(true);
-            Calendar c = Calendar.getInstance();
-            c.setTimeInMillis(System.currentTimeMillis());
-            int hour = c.get(Calendar.HOUR_OF_DAY);
-//            if (hour >= 23 || hour <= 6) {
-//                mWakeLock.acquire(5000);
-//            } else {
-//                mWakeLock.acquire(300000);
-//            }
-            mWakeLock.acquire();
-        }
-        return (mWakeLock);
     }
 
     public int getCurrentStep() {
