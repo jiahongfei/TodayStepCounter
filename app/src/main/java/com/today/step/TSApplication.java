@@ -5,10 +5,6 @@ import android.app.Application;
 import android.os.Bundle;
 
 
-/**
- * Created by jiahongfei on 2018/1/15.
- */
-
 public class TSApplication extends Application {
 
     private static TSApplication sApplication;

@@ -8,12 +8,6 @@ import android.text.TextUtils;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * @author :  jiahongfei
- * @email : jiahongfeinew@163.com
- * @date : 2019/1/3
- * @desc : 日志包装类
- */
 public class JLoggerWraper {
 
     public static final void initXLog(Application application, String xlogPath) {

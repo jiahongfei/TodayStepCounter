@@ -2,12 +2,6 @@ package com.today.step.lib;
 
 import java.util.List;
 
-/**
- * @author :  jiahongfei
- * @email : jiahongfeinew@163.com
- * @date : 2018/1/22
- * @desc :
- */
 
 interface ITodayStepDBHelper {
 

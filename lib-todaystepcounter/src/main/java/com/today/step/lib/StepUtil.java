@@ -2,13 +2,6 @@ package com.today.step.lib;
 
 import java.util.Date;
 
-/**
- * @author :  jiahongfei
- * @email : jiahongfeinew@163.com
- * @date : 2018/10/16
- * @desc :
- */
-
 public class StepUtil {
 
     /**

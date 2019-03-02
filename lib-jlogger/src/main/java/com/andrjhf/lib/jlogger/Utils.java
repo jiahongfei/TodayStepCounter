@@ -7,12 +7,6 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.util.Log;
 
-/**
- * @author :  jiahongfei
- * @email : jiahongfeinew@163.com
- * @date : 2019/1/3
- * @desc :
- */
 public class Utils {
 
     public static String getProcessName(Application application) {

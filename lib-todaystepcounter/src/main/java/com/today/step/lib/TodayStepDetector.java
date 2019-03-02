@@ -10,6 +10,7 @@ import android.hardware.SensorEventListener;
 import android.os.Handler;
 import android.os.Message;
 
+
 import com.andrjhf.lib.jlogger.JLoggerConstant;
 import com.andrjhf.lib.jlogger.JLoggerWraper;
 

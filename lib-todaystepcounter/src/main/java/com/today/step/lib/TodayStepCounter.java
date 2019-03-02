@@ -7,10 +7,13 @@ import android.content.IntentFilter;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
-import android.location.Location;
+import android.os.BatteryManager;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
+import android.os.PowerManager;
 import android.os.SystemClock;
+import android.util.Log;
 
 import com.andrjhf.lib.jlogger.JLoggerConstant;
 import com.andrjhf.lib.jlogger.JLoggerWraper;
@@ -68,11 +71,12 @@ class TodayStepCounter implements SensorEventListener {
                     map.put("sOffsetStep",String.valueOf(mJLoggerOffsetStep));
                     map.put("SensorCount",String.valueOf(mJLoggerSensorCount));
                     //增加电量、息屏状态
-                    int battery = AssistJLogMessageUtils.getBattery(mContext);
+                    int battery = getBattery();
                     if(battery!=-1){
                         map.put("battery",String.valueOf(battery));
                     }
-                    map.put("isScreenOn",String.valueOf(AssistJLogMessageUtils.getScreenState(mContext)));
+                    map.put("isScreenOn",String.valueOf(getScreenState()));
+                    Log.e("wcd_map",map.toString());
                     JLoggerWraper.onEventInfo(mContext,JLoggerConstant.JLOGGER_TYPE_STEP_COUNTER_TIMER,map);
                     sHandler.removeMessages(HANDLER_WHAT_TEST_JLOGGER);
                     sHandler.sendEmptyMessageDelayed(HANDLER_WHAT_TEST_JLOGGER,WHAT_TEST_JLOGGER_DURATION);
@@ -110,12 +114,6 @@ class TodayStepCounter implements SensorEventListener {
         map.put("mShutdown",String.valueOf(mShutdown));
         map.put("isShutdown",String.valueOf(isShutdown));
         map.put("lastSensorStep",String.valueOf(PreferencesHelper.getLastSensorStep(mContext)));
-        //添加定位
-        Location location = AssistJLogMessageUtils.getLocation(mContext);
-        if(location!=null){
-            map.put("lat",String.valueOf(location.getLatitude()));
-            map.put("lon",String.valueOf(location.getLongitude()));
-        }
         JLoggerWraper.onEventInfo(mContext,JLoggerConstant.JLOGGER_TYPE_STEP_CONSTRUCTOR,map);
 
         dateChangeCleanStep();
@@ -140,6 +138,7 @@ class TodayStepCounter implements SensorEventListener {
                         || Intent.ACTION_TIME_CHANGED.equals(intent.getAction())) {
                     //service存活做0点分隔
                     dateChangeCleanStep();
+
                 }
             }
         };
@@ -228,9 +227,9 @@ class TodayStepCounter implements SensorEventListener {
     private void shutdown(int counterStep) {
         int tmpCurrStep = (int) PreferencesHelper.getCurrentStep(mContext);
         //重新设置offset
-//        sOffsetStep = counterStep - tmpCurrStep;
+        sOffsetStep = counterStep - tmpCurrStep;
         //TODO 只有在当天进行过关机，才会进入到这，直接置反??@老大
-        sOffsetStep = -tmpCurrStep;
+//        sOffsetStep = -tmpCurrStep;
         PreferencesHelper.setStepOffset(mContext, sOffsetStep);
 
         mShutdown = false;
@@ -252,17 +251,12 @@ class TodayStepCounter implements SensorEventListener {
     }
 
     private boolean shutdownBySystemRunningTime() {
-        Map<String,String> map = new HashMap<>();
-        map.put("getElapsedRealtime",PreferencesHelper.getElapsedRealtime(mContext)+"");
-        map.put("SystemClock.elapsedRealtime",SystemClock.elapsedRealtime()+"");
         if (PreferencesHelper.getElapsedRealtime(mContext) > SystemClock.elapsedRealtime()) {
-            map.put("result","进行了关机操作");
+            JLoggerWraper.onEventInfo(mContext,JLoggerConstant.JLOGGER_TYPE_STEP_SHUTDOWNBYSYSTEMRUNNINGTIME,"本地记录的时间，判断进行了关机操作");
             //上次运行的时间大于当前运行时间判断为重启，只是增加精度，极端情况下连续重启，会判断不出来
 //            Logger.e(TAG, "上次运行的时间大于当前运行时间判断为重启，只是增加精度，极端情况下连续重启，会判断不出来");
             return true;
         }
-        map.put("result","未进行关机操作");
-        JLoggerWraper.onEventInfo(mContext,JLoggerConstant.JLOGGER_TYPE_STEP_SHUTDOWNBYSYSTEMRUNNINGTIME,map);
         return false;
     }
 
@@ -325,5 +319,16 @@ class TodayStepCounter implements SensorEventListener {
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
     }
-
+    private int getBattery(){
+        BatteryManager batteryManager = (BatteryManager)mContext.getSystemService(Context.BATTERY_SERVICE);
+        int battery = -1;
+        if(Build.VERSION.SDK_INT >=Build.VERSION_CODES.LOLLIPOP){
+             battery = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
+        }
+        return battery;
+    }
+    private boolean getScreenState(){
+        PowerManager pm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
+        return pm.isScreenOn();
+    }
 }

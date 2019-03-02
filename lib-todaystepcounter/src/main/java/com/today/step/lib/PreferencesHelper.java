@@ -42,7 +42,7 @@ class PreferencesHelper {
     }
 
     public static float getLastSensorStep(Context context) {
-        return getSharedPreferences(context).getFloat(LAST_SENSOR_TIME, -1F);
+        return getSharedPreferences(context).getFloat(LAST_SENSOR_TIME, 0.0f);
     }
 
 

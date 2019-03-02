@@ -1,11 +1,5 @@
 package com.andrjhf.lib.jlogger;
 
-/**
- * @author :  jiahongfei
- * @email : jiahongfeinew@163.com
- * @date : 2019/1/3
- * @desc : 日志事件常量类
- */
 public class JLoggerConstant {
 
     /**

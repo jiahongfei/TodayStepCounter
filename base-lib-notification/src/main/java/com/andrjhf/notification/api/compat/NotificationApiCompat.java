@@ -12,13 +12,6 @@ import android.os.Build;
 import android.support.v7.app.NotificationCompat;
 import android.text.TextUtils;
 
-/**
- * @author :  jiahongfei
- * @email : jiahongfeinew@163.com
- * @date : 2018/8/14
- * @desc : 通知api兼容
- */
-
 public class NotificationApiCompat {
 
     private static final String TAG = "NotificationApiCompat";

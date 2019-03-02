@@ -6,13 +6,6 @@ import org.json.JSONObject;
 
 import java.util.List;
 
-/**
- * @author :  jiahongfei
- * @email : jiahongfeinew@163.com
- * @date : 2018/1/31
- * @desc : 用于解析和生成运动步数Json字符串
- */
-
 public class SportStepJsonUtils {
 
     public static final String SPORT_DATE = "sportDate";
@@ -41,7 +34,7 @@ public class SportStepJsonUtils {
     static JSONObject getJSONObject(TodayStepData todayStepData) throws JSONException{
         JSONObject subObject = new JSONObject();
         subObject.put(TODAY, todayStepData.getToday());
-        subObject.put(SPORT_DATE, todayStepData.getDate());
+        subObject.put(SPORT_DATE, todayStepData.getDate()/1000);
         subObject.put(STEP_NUM, todayStepData.getStep());
         subObject.put(DISTANCE, getDistanceByStep(todayStepData.getStep()));
         subObject.put(CALORIE, getCalorieByStep(todayStepData.getStep()));
