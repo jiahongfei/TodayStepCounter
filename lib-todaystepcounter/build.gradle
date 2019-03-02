@@ -1,21 +1,22 @@
-apply plugin: 'com.android.application'
+apply plugin: 'com.android.library'
 
 android {
     compileSdkVersion versions.compileSdk
     buildToolsVersion '28.0.3'
 
     defaultConfig {
-        applicationId versions.applicationId
         minSdkVersion versions.minSdk
         targetSdkVersion versions.targetSdk
         versionCode change.code
         versionName change.name
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+
     }
     buildTypes {
-        debug{
+        debug {
+            buildConfigField "boolean", "TODAY_STEP_DEBUG", "true"
         }
         release {
+            buildConfigField "boolean", "TODAY_STEP_DEBUG", "true"
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
@@ -25,5 +26,7 @@ android {
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation libraries.supportAppCompat
-    implementation project(':lib-todaystepcounter')
+    implementation project(':base-lib-notification')
+    implementation project(':lib-jlogger')
+
 }

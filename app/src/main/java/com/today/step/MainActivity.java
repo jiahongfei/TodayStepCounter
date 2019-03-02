@@ -25,7 +25,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int REFRESH_STEP_WHAT = 0;
 
     //循环取当前时刻的步数中间的间隔时间
-    private long TIME_INTERVAL_REFRESH = 500;
+    private long TIME_INTERVAL_REFRESH = 3000;
 
     private Handler mDelayHandler = new Handler(new TodayStepCounterCall());
     private int mStepSum;
@@ -34,18 +34,17 @@ public class MainActivity extends AppCompatActivity {
 
     private TextView mStepArrayTextView;
 
-    private TSApplication tsApplication;
+    private TextView timeTextView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        tsApplication = (TSApplication) getApplication();
-
         //初始化计步模块
-        TodayStepManager.init(getApplication());
+        TodayStepManager.startTodayStepService(getApplication());
 
+        timeTextView = (TextView) findViewById(R.id.timeTextView);
         mStepArrayTextView = (TextView) findViewById(R.id.stepArrayTextView);
 
         //开启计步Service，同时绑定Activity进行aidl通信
@@ -71,6 +70,9 @@ public class MainActivity extends AppCompatActivity {
 
             }
         }, Context.BIND_AUTO_CREATE);
+
+        //计时器
+        mhandmhandlele.post(timeRunable);
 
     }
 
@@ -123,32 +125,42 @@ public class MainActivity extends AppCompatActivity {
                 }
                 break;
             }
-            case R.id.stepArrayButton1:{
-                //根据时间来获取步数列表
-                if (null != iSportStepInterface) {
-                    try {
-                        String stepArray = iSportStepInterface.getTodaySportStepArrayByDate("2018-01-19");
-                        mStepArrayTextView.setText(stepArray);
-                    } catch (RemoteException e) {
-                        e.printStackTrace();
-                    }
-                }
-                break;
-            }
-            case R.id.stepArrayButton2:{
-                //获取多天步数列表
-                if (null != iSportStepInterface) {
-                    try {
-                        String stepArray = iSportStepInterface.getTodaySportStepArrayByStartDateAndDays("2018-01-20", 6);
-                        mStepArrayTextView.setText(stepArray);
-                    } catch (RemoteException e) {
-                        e.printStackTrace();
-                    }
-                }
-                break;
-            }
             default:
                 break;
         }
+    }
+
+
+    /*****************计时器*******************/
+    private Runnable timeRunable = new Runnable() {
+        @Override
+        public void run() {
+
+            currentSecond = currentSecond + 1000;
+            timeTextView.setText(getFormatHMS(currentSecond));
+            if (!isPause) {
+                //递归调用本runable对象，实现每隔一秒一次执行任务
+                mhandmhandlele.postDelayed(this, 1000);
+            }
+        }
+    };
+    //计时器
+    private Handler mhandmhandlele = new Handler();
+    private boolean isPause = false;//是否暂停
+    private long currentSecond = 0;//当前毫秒数
+/*****************计时器*******************/
+
+    /**
+     * 根据毫秒返回时分秒
+     *
+     * @param time
+     * @return
+     */
+    public static String getFormatHMS(long time) {
+        time = time / 1000;//总秒数
+        int s = (int) (time % 60);//秒
+        int m = (int) (time / 60);//分
+        int h = (int) (time / 3600);//秒
+        return String.format("%02d:%02d:%02d", h, m, s);
     }
 }
